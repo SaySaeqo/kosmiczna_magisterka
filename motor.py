@@ -1,69 +1,51 @@
 import RPi.GPIO as GPIO
 from time import sleep, perf_counter
 
-HIGH = 1
-LOW = 0
+FULL_ROTATION = 200
 
-HALF_STEP = [
-    [LOW, LOW, LOW, HIGH],
-    [LOW, LOW, HIGH, HIGH],
-    [LOW, LOW, HIGH, LOW],
-    [LOW, HIGH, HIGH, LOW],
-    [LOW, HIGH, LOW, LOW],
-    [HIGH, HIGH, LOW, LOW],
-    [HIGH, LOW, LOW, LOW],
-    [HIGH, LOW, LOW, HIGH],
-]
+PINS = {
+    "M1": 14,
+    "M2": 15,
+    "M3": 18,
+    "DIR": 3,
+    "STEP": 2,
+    "EN": 17,
+    "SLP": 27,
+    "RST": 4
+}
 
-FULL_STEP = [
-    [HIGH, LOW, HIGH, LOW],
-    [LOW, HIGH, HIGH, LOW],
-    [LOW, HIGH, LOW, HIGH],
-    [HIGH, LOW, LOW, HIGH]
-]
-
-FULL_ROTATION = int(4075.7728395061727 / 8)
-
-IN1 = 17
-IN2 = 27
-IN3 = 22
-IN4 = 26
-
-# Setup pin layout on PI
-GPIO.setmode(GPIO.BCM)
-
-# Establish Pins in software
-GPIO.setup(IN1, GPIO.OUT)
-GPIO.setup(IN2, GPIO.OUT)
-GPIO.setup(IN3, GPIO.OUT)
-GPIO.setup(IN4, GPIO.OUT)
+def setup():
+    GPIO.setmode(GPIO.BCM)
+    for pin in PINS.values():
+        GPIO.setup(pin, GPIO.OUT)
 
 def reset():
-    GPIO.output(IN1, GPIO.LOW)
-    GPIO.output(IN2, GPIO.LOW)
-    GPIO.output(IN3, GPIO.LOW)
-    GPIO.output(IN4, GPIO.LOW)
+    for pin in PINS.values():
+        GPIO.output(pin, GPIO.LOW)
 
-def step(step, count, direction=1):
-    """Rotate count steps. direction = -1 means backwards"""
-    for x in range(count):
-        for bit in step[::direction]:
-            GPIO.output(IN1, bit[0]) 
-            GPIO.output(IN2, bit[1]) 
-            GPIO.output(IN3, bit[2]) 
-            GPIO.output(IN4, bit[3]) 
-            sleep(.001)
-    reset()
+
+def generate_sine_wave(frequency=1, duration=1):
+    """Generate a sine wave for the given frequency and duration."""
+    start_time = perf_counter()
+    while perf_counter() - start_time < duration:
+        yield GPIO.HIGH
+        sleep(1 / (2 * frequency))
+        yield GPIO.LOW
+        sleep(1 / (2 * frequency))
+
+def step(count, direction=GPIO.LOW):
+    """Rotate count steps. direction = 1 means backwards"""
+    GPIO.output(PINS["DIR"], direction)
+    for state, _ in zip(generate_sine_wave(200), range(200)):
+        GPIO.output(PINS["STEP"], state)
 
 if __name__ == "__main__":
     try:
+        setup()
         reset()
-        start = perf_counter()
-        step(HALF_STEP, FULL_ROTATION)
-        one_rot = perf_counter() - start
-        print(f"{one_rot} seconds")
-
-    # Once finished clean everything up
-    except KeyboardInterrupt:
+        step(FULL_ROTATION)
+        reset()
+    except KeyboardInterrupt: ...
+    finally:
         print("cleanup")
         GPIO.cleanup()

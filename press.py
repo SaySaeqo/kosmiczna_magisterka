@@ -5,7 +5,8 @@ import sys
 if __name__ == "__main__":
     try:
         if len(sys.argv) < 2:
-            print("You need provide at least pin number!")
+            print("Use: python press.py <pin> [<seconds>]\n"
+                  "Use pins numbering in BCM mode")
             sys.exit()
         pin = int(sys.argv[1])
         seconds = float(sys.argv[2]) if len(sys.argv) > 2 else 5.0
