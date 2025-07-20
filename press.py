@@ -1,3 +1,5 @@
+#!/bin/python
+
 import RPi.GPIO as GPIO
 from time import sleep, perf_counter
 import sys
@@ -5,7 +7,7 @@ import sys
 if __name__ == "__main__":
     try:
         if len(sys.argv) < 2:
-            print("Use: python press.py <pin> [<seconds>]\n"
+            print("Use: press.py <pin> [<seconds>]\n"
                   "Use pins numbering in BCM mode")
             sys.exit()
         pin = int(sys.argv[1])
