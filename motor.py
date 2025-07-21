@@ -9,9 +9,9 @@ PINS = {
     "M3": 22,
     "DIR": 23,
     "STEP": 24,
-    "EN": 25,
-    "SLP": 8,
-    "RST": 7
+    "EN": 4,
+    "SLP": NOT_ASSIGNED,
+    "RST": NOT_ASSIGNED
 }
 
 def setup():
@@ -23,13 +23,8 @@ def reset():
     for pin in PINS.values():
         GPIO.output(pin, GPIO.LOW)
     # These 2 are reversed in the motor driver:
-    GPIO.output(PINS["SLP"], GPIO.HIGH)
-    GPIO.output(PINS["RST"], GPIO.HIGH)
-    # Reseting driver itself just to be sure:
-    sleep(0.1)
-    GPIO.output(PINS["RST"], GPIO.LOW)
-    sleep(0.1)
-    GPIO.output(PINS["RST"], GPIO.HIGH)
+    # GPIO.output(PINS["SLP"], GPIO.HIGH)
+    # GPIO.output(PINS["RST"], GPIO.HIGH)
 
 def generate_sine_wave(frequency=1, duration=1):
     """Generate a sine wave for the given frequency and duration."""
