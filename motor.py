@@ -37,6 +37,7 @@ def generate_sine_wave(frequency=1, duration=1):
 if __name__ == "__main__":
     try:
         setup()
+        reset()
         while True:
             cmd = input("Enter command: ").strip()
             if cmd == "rot":
