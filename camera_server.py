@@ -179,7 +179,7 @@ def run_motor():
         return {"motor_status": "already running"}
     motor_is_running = True
     motor.reset()
-    motor.step(motor.HALF_STEP, motor.FULL_ROTATION)
+    motor.rotate(motor.HALF_STEP, motor.FULL_ROTATION)
     motor_is_running = False
     return {"motor_status": "motor has run successfuly"}
 

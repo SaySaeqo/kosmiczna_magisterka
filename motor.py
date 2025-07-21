@@ -4,14 +4,14 @@ from time import sleep, perf_counter
 FULL_ROTATION = 200
 NOT_ASSIGNED = 26
 PINS = {
-    "M1": NOT_ASSIGNED,
-    "M2": NOT_ASSIGNED,
-    "M3": NOT_ASSIGNED,
-    "DIR": 27,
-    "STEP": 17,
-    "EN": NOT_ASSIGNED,
-    "SLP": NOT_ASSIGNED,
-    "RST": NOT_ASSIGNED
+    "M1": 17,
+    "M2": 27,
+    "M3": 22,
+    "DIR": 23,
+    "STEP": 24,
+    "EN": 25,
+    "SLP": 8,
+    "RST": 7
 }
 
 def setup():
@@ -34,18 +34,25 @@ def generate_sine_wave(frequency=1, duration=1):
         yield GPIO.LOW
         sleep(wait_time)
 
-def step(count, direction=GPIO.LOW):
-    """Rotate count steps. direction = 1 means backwards"""
-    GPIO.output(PINS["DIR"], direction)
-    for state, _ in zip(generate_sine_wave(100,2), range(200)):
-        GPIO.output(PINS["STEP"], state)
-
 if __name__ == "__main__":
     try:
         setup()
-        reset()
-        step(FULL_ROTATION)
-        reset()
+        while True:
+            cmd = input("Enter command: ").strip().lower()
+            if cmd == "rot":
+                print("Rotating...")
+                for state in generate_sine_wave(100,2):
+                    GPIO.output(PINS["STEP"], state)
+            elif cmd in PINS:
+                state = int(input(f"Set {cmd} state (0/1): ").strip())
+                if state not in (0, 1):
+                    print("Invalid state. Use 0 or 1.")
+                    continue
+                GPIO.output(PINS[cmd], state)
+                print(f"{cmd} set to {'HIGH' if state else 'LOW'}")
+            elif cmd == "reset":
+                print("Resetting all pins...")
+                reset()
     except KeyboardInterrupt: ...
     finally:
         print("cleanup")
