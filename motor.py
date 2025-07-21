@@ -53,6 +53,11 @@ if __name__ == "__main__":
             elif cmd == "reset":
                 print("Resetting all pins...")
                 reset()
+            elif cmd == "pins":
+                # Not sure if works
+                print("Current pin states:")
+                for name, pin in PINS.items():
+                    print(f"{name}: {GPIO.input(pin)}")
     except KeyboardInterrupt: ...
     finally:
         print("cleanup")
