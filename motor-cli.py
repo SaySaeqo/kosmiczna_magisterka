@@ -25,7 +25,7 @@ if __name__ == "__main__":
                 print("Current pin states:")
                 for name, pin in motor.PINS.items():
                     print(f"{name}: {GPIO.input(pin)}")
-    except KeyboardInterrupt: ...
+    except KeyboardInterrupt: print()
     finally:
         motor.reset()
         GPIO.output(motor.PINS["EN"], GPIO.HIGH)
