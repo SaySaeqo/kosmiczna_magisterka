@@ -38,7 +38,7 @@ if __name__ == "__main__":
     try:
         setup()
         while True:
-            cmd = input("Enter command: ").strip().lower()
+            cmd = input("Enter command: ").strip()
             if cmd == "rot":
                 print("Rotating...")
                 for state in generate_sine_wave(100,2):
