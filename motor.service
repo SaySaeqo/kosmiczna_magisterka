@@ -1,0 +1,11 @@
+[Unit]
+Description=Stepper motor setup
+[Service]
+Type=oneshot
+RemainAfterExit=yes
+ExecStart=/bin/python /home/pi/kosmiczna_magisterka/motor.py
+User=pi
+Group=pi
+WorkingDirectory=~
+[Install]
+WantedBy=multi-user.target

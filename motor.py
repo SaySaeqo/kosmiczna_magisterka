@@ -19,10 +19,16 @@ def setup():
     for pin in PINS.values():
         GPIO.setup(pin, GPIO.OUT)
 
+def press(pin, seconds=0.1):
+    """Press a pin for a given number of seconds."""
+    GPIO.output(pin, GPIO.HIGH)
+    sleep(seconds)
+    GPIO.output(pin, GPIO.LOW)
+
 def reset():
     for pin in PINS.values():
         GPIO.output(pin, GPIO.LOW)
-
+    press(PINS["RST"])
 
 def generate_sine_wave(frequency=1, duration=1):
     """Generate a sine wave for the given frequency and duration."""
@@ -35,31 +41,6 @@ def generate_sine_wave(frequency=1, duration=1):
         sleep(wait_time)
 
 if __name__ == "__main__":
-    try:
-        setup()
-        reset()
-        while True:
-            cmd = input("Enter command: ").strip()
-            if cmd == "rot":
-                print("Rotating...")
-                for state in generate_sine_wave(100,2):
-                    GPIO.output(PINS["STEP"], state)
-            elif cmd in PINS:
-                state = int(input(f"Set {cmd} state (0/1): ").strip())
-                if state not in (0, 1):
-                    print("Invalid state. Use 0 or 1.")
-                    continue
-                GPIO.output(PINS[cmd], state)
-                print(f"{cmd} set to {'HIGH' if state else 'LOW'}")
-            elif cmd == "reset":
-                print("Resetting all pins...")
-                reset()
-            elif cmd == "pins":
-                # Not sure if works
-                print("Current pin states:")
-                for name, pin in PINS.items():
-                    print(f"{name}: {GPIO.input(pin)}")
-    except KeyboardInterrupt: ...
-    finally:
-        print("cleanup")
-        GPIO.cleanup()
+    setup()
+    reset()
+    GPIO.output(PINS["EN"], GPIO.HIGH)  # DISABLE motor
