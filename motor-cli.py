@@ -3,6 +3,8 @@ import motor
 
 if __name__ == "__main__":
     try:
+        motor.setup()
+        motor.reset()
         while True:
             cmd = input("Enter command: ").strip()
             if cmd == "rot":
@@ -20,8 +22,10 @@ if __name__ == "__main__":
                 print("Resetting all pins...")
                 motor.reset()
             elif cmd == "pins":
-                # Not sure if works
                 print("Current pin states:")
                 for name, pin in motor.PINS.items():
                     print(f"{name}: {GPIO.input(pin)}")
     except KeyboardInterrupt: ...
+    finally:
+        motor.reset()
+        GPIO.output(motor.PINS["EN"], GPIO.HIGH)
