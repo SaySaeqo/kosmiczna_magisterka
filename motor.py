@@ -19,16 +19,17 @@ def setup():
     for pin in PINS.values():
         GPIO.setup(pin, GPIO.OUT)
 
-def press(pin, seconds=0.1):
-    """Press a pin for a given number of seconds."""
-    GPIO.output(pin, GPIO.HIGH)
-    sleep(seconds)
-    GPIO.output(pin, GPIO.LOW)
-
 def reset():
     for pin in PINS.values():
         GPIO.output(pin, GPIO.LOW)
-    press(PINS["RST"])
+    # These 2 are reversed in the motor driver:
+    GPIO.output(PINS["SLP"], GPIO.HIGH)
+    GPIO.output(PINS["RST"], GPIO.HIGH)
+    # Reseting driver itself just to be sure:
+    sleep(0.1)
+    GPIO.output(PINS["RST"], GPIO.LOW)
+    sleep(0.1)
+    GPIO.output(PINS["RST"], GPIO.HIGH)
 
 def generate_sine_wave(frequency=1, duration=1):
     """Generate a sine wave for the given frequency and duration."""

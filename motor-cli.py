@@ -7,12 +7,21 @@ if __name__ == "__main__":
         motor.reset()
         while True:
             cmd = input("Enter command: ").strip()
+            state = None
+            if " " in cmd:
+                cmd, state = cmd.split(" ", 1)
+                if state not in ("0", "1"):
+                    print("Invalid state. Use 0 or 1.")
+                    continue
+                state = int(state)
+
             if cmd == "rot":
                 print("Rotating...")
-                for state in motor.generate_sine_wave(100,2):
+                for state in motor.generate_sine_wave(200,1):
                     GPIO.output(motor.PINS["STEP"], state)
             elif cmd in motor.PINS:
-                state = int(input(f"Set {cmd} state (0/1): ").strip())
+                if state is None:
+                    state = int(input(f"Set {cmd} state (0/1): ").strip())
                 if state not in (0, 1):
                     print("Invalid state. Use 0 or 1.")
                     continue
