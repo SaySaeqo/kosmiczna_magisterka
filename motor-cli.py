@@ -55,6 +55,6 @@ if __name__ == "__main__":
     finally:
         motor.reset()
         if rotator:
-            del rotator
+            rotator.stop()
             rotator = None
         GPIO.output(motor.PINS["EN"], GPIO.HIGH)
