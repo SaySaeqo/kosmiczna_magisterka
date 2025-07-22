@@ -59,7 +59,7 @@ class MotorRotator:
         self.frequency = frequency
         print(f"Frequency set to {self.frequency} Hz")
 
-    def __del__(self):
+    def stop(self):
         print("Stopping motor...")
         self.active = False
         self.rotate_job.join()

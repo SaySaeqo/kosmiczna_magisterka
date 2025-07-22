@@ -24,7 +24,7 @@ if __name__ == "__main__":
                 try:
                     freq = float(cmd[1]) if len(cmd) > 1 else 0.75
                     if freq <= 0:
-                        del rotator
+                        rotator.stop()
                         rotator = None
                     elif rotator is None:
                         rotator = motor.MotorRotator(freq)
