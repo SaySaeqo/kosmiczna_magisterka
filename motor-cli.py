@@ -1,6 +1,8 @@
 import RPi.GPIO as GPIO
 import motor
 
+rotator = None
+
 if __name__ == "__main__":
     try:
         motor.setup()
@@ -18,6 +20,18 @@ if __name__ == "__main__":
                     continue
                 for state in motor.generate_sine_wave(freq, seconds):
                     GPIO.output(motor.PINS["STEP"], state)
+            elif cmd[0] == "freq":
+                try:
+                    freq = float(cmd[1]) if len(cmd) > 1 else 0.75
+                    if freq <= 0:
+                        del rotator
+                        rotator = None
+                    elif rotator is None:
+                        rotator = motor.MotorRotator(freq)
+                    else:
+                        rotator.set_frequency(freq)
+                except ValueError:
+                    print("Usage: freq [frequency]")
             elif cmd[0] in motor.PINS:
                 if len(cmd) == 1:
                     cmd.append(input(f"Set {cmd} state (0/1): ").strip())
@@ -37,4 +51,7 @@ if __name__ == "__main__":
     except KeyboardInterrupt: print()
     finally:
         motor.reset()
+        if rotator:
+            del rotator
+            rotator = None
         GPIO.output(motor.PINS["EN"], GPIO.HIGH)
