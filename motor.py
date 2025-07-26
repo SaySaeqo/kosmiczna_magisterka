@@ -78,7 +78,7 @@ def generate_accelerated_sine_wave(acceleration=2*math.pi, duration=1, start_fre
         yield GPIO.LOW
         sleep(wait_time)
         wait_time = wait_time / k(wait_time*2)
-        LOG.debug(f"Wait time adjusted to {wait_time:.6f} seconds which is {1/wait_time:.2f} Hz")
+        LOG.debug(f"Impuls time: {wait_time*2:.6f} seconds which is {1/wait_time/2:.2f} Hz")
 
 def rotate_platform(radians, duration=1, start_frequency=100):
     """Rotate the platform by a specified angle in radians."""
