@@ -1,5 +1,6 @@
 import RPi.GPIO as GPIO
 import motor
+import math
 
 rotator = None
 
@@ -29,7 +30,7 @@ if __name__ == "__main__":
                     continue
                 print("Rotating with acceleration...")
                 try:
-                    radians = float(cmd[1]) if len(cmd) > 1 else 2 * 3.14159
+                    radians = float(cmd[1]) if len(cmd) > 1 else math.pi
                     seconds = float(cmd[2]) if len(cmd) > 2 else 1
                     start_frequency = int(cmd[3]) if len(cmd) > 3 else 100
                 except ValueError:
