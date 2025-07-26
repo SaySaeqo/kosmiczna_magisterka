@@ -1,6 +1,7 @@
 import RPi.GPIO as GPIO
 from time import sleep, perf_counter
 import threading
+import math
 
 FULL_ROTATION = 200
 NOT_ASSIGNED = 26
@@ -63,6 +64,27 @@ class MotorRotator:
         print("Stopping motor...")
         self.active = False
         self.rotate_job.join()
+
+def generate_accelerated_sine_wave(acceleration=2*math.pi, duration=1, start_frequency=100):
+    """Generate an accelerated sine wave for the given frequency and duration."""
+    start_time = perf_counter()
+    rotation_per_step = 2*math.pi / FULL_ROTATION
+    acceleration_constant = acceleration / rotation_per_step
+    def k(step_time):
+        return acceleration_constant * step_time * step_time + 1
+    wait_time = 1 / (2 * start_frequency)
+    while perf_counter() - start_time < duration:
+        yield GPIO.HIGH
+        sleep(wait_time)
+        yield GPIO.LOW
+        sleep(wait_time)
+        wait_time = wait_time / k(wait_time*2)
+
+def rotate_platform(radians, duration=1, start_frequency=100):
+    """Rotate the platform by a specified angle in radians."""
+    acceleration = (2*radians)/(duration*duration)
+    for step in generate_accelerated_sine_wave(acceleration, duration, start_frequency):
+        GPIO.output(PINS["STEP"], step)
 
 if __name__ == "__main__":
     setup()

@@ -23,6 +23,19 @@ if __name__ == "__main__":
                     continue
                 for state in motor.generate_sine_wave(freq, seconds):
                     GPIO.output(motor.PINS["STEP"], state)
+            elif cmd[0] == "rotacc":
+                if rotator is not None:
+                    print("Motor is already rotating. Use 'freq 0' to stop it first.")
+                    continue
+                print("Rotating with acceleration...")
+                try:
+                    radians = float(cmd[1]) if len(cmd) > 1 else 2 * 3.14159
+                    seconds = int(cmd[2]) if len(cmd) > 2 else 1
+                    start_frequency = float(cmd[3]) if len(cmd) > 3 else 100
+                except ValueError:
+                    print("Usage: rotacc [radians] [seconds] [start_frequency]")
+                    continue
+                motor.rotate_platform(radians, seconds, start_frequency)
             elif cmd[0] == "freq":
                 try:
                     freq = float(cmd[1]) if len(cmd) > 1 else 0.75
