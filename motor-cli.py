@@ -1,10 +1,12 @@
 import RPi.GPIO as GPIO
 import motor
 import math
+import logging
 
 rotator = None
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG, filemode="w", filename="motor.log")
     try:
         motor.setup()
         motor.reset()
