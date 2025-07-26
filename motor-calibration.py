@@ -11,7 +11,7 @@ if __name__ == "__main__":
 
         for u in range(1, 11):
             motor.INERTIA_PLATFORM2WHEEL_RATIO = u
-            motor.rotate_platform(math.pi, 0.5, 100)
+            motor.rotate_platform(math.pi, 1, 100)
             next_step = input(f"Is {u} to much? (y/n): ").strip().lower()
             if next_step == "y":
                 unit = u - 1
@@ -19,7 +19,7 @@ if __name__ == "__main__":
         
         for t in range(0.1, 1, 0.1):
             motor.INERTIA_PLATFORM2WHEEL_RATIO = unit + t
-            motor.rotate_platform(math.pi, 0.5, 100)
+            motor.rotate_platform(math.pi, 1, 100)
             next_step = input(f"Is {unit + t} to much? (y/n): ").strip().lower()
             if next_step == "y":
                 tenths = t - 0.1
@@ -27,7 +27,7 @@ if __name__ == "__main__":
         
         for h in range(0.01, 0.1, 0.01):
             motor.INERTIA_PLATFORM2WHEEL_RATIO = unit + tenths + h
-            motor.rotate_platform(math.pi, 0.5, 100)
+            motor.rotate_platform(math.pi, 1, 100)
             next_step = input(f"Is {unit + tenths + h} to much? (y/n): ").strip().lower()
             if next_step == "y":
                 hundredths = h - 0.01

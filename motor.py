@@ -84,7 +84,7 @@ def generate_accelerated_sine_wave(acceleration=2*math.pi, duration=1, start_fre
 
 def rotate_platform(radians, duration=1, start_frequency=100):
     """Rotate the platform by a specified angle in radians."""
-    acceleration = (2*radians)/(duration*duration)*INERTIA_PLATFORM2WHEEL_RATIO
+    acceleration = INERTIA_PLATFORM2WHEEL_RATIO*(2*radians)/(duration*duration)
     for step in generate_accelerated_sine_wave(acceleration, duration, start_frequency):
         GPIO.output(PINS["STEP"], step)
 
