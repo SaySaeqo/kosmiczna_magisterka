@@ -45,7 +45,7 @@ class MotorRotator:
         def rotate(self):
             print("Rotating...")
             while self.active:
-                wait_time = 1 / (2 * self.steps_per_second())
+                wait_time = 1 / (2 * self.frequency)
                 GPIO.output(PINS["STEP"], GPIO.HIGH)
                 sleep(wait_time)
                 GPIO.output(PINS["STEP"], GPIO.LOW)
@@ -53,9 +53,6 @@ class MotorRotator:
         self.rotate_job = threading.Thread(target=rotate, args=(self,))
         self.rotate_job.start()
 
-    def steps_per_second(self):
-        return self.frequency * FULL_ROTATION
-    
     def set_frequency(self, frequency):
         self.frequency = frequency
         print(f"Frequency set to {self.frequency} Hz")
