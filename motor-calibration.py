@@ -7,7 +7,7 @@ if __name__ == "__main__":
         motor.setup()
         motor.reset()
 
-        unit, tenths, hundredths = 0, 0, 0
+        unit, tenths, hundredths = 11, 0.9, 0.09
 
         for u in range(1, 11):
             motor.INERTIA_PLATFORM2WHEEL_RATIO = u
