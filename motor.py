@@ -66,7 +66,7 @@ class MotorRotator:
         self.active = False
         self.rotate_job.join()
 
-def generate_accelerated_wait_times(acceleration=2*math.pi, duration=1, start_frequency=100):
+def accelerated_wait_times(acceleration=2*math.pi, duration=1, start_frequency=100):
     """Generate an accelerated sine wave for the given frequency and duration."""
     rotation_per_step = 2*math.pi / FULL_ROTATION
     acceleration_constant = acceleration / rotation_per_step
@@ -74,6 +74,7 @@ def generate_accelerated_wait_times(acceleration=2*math.pi, duration=1, start_fr
         return acceleration_constant * step_time * step_time + 1
     last = 1 / (2 * start_frequency)
     wait_times=[last]
+    duration -= last * 2
     while duration > 0:
         last = last * k(last*2)
         wait_times.append(last)
@@ -84,7 +85,7 @@ def generate_accelerated_wait_times(acceleration=2*math.pi, duration=1, start_fr
 def rotate_platform(radians, duration=1, start_frequency=100):
     """Rotate the platform by a specified angle in radians."""
     acceleration = INERTIA_PLATFORM2WHEEL_RATIO*(2*radians)/(duration*duration)
-    for wt in generate_accelerated_wait_times(acceleration, duration, start_frequency):
+    for wt in accelerated_wait_times(acceleration, duration, start_frequency):
         GPIO.output(PINS["STEP"], GPIO.HIGH)
         sleep(wt)
         GPIO.output(PINS["STEP"], GPIO.LOW)
