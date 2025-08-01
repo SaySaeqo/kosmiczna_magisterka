@@ -76,7 +76,7 @@ def accelerated_wait_times(acceleration=2*math.pi, duration=1, start_frequency=1
     wait_times=[last]
     duration -= last * 2
     while duration > 0:
-        last = last * k(last*2)
+        last = last / k(last*2)
         wait_times.append(last)
         duration -= last * 2
         LOG.debug(f"Impuls time: {last*2:.6f} seconds which is {1/last/2:.2f} Hz")
