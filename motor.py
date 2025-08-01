@@ -66,29 +66,33 @@ class MotorRotator:
         self.active = False
         self.rotate_job.join()
 
-def generate_accelerated_sine_wave(acceleration=2*math.pi, duration=1, start_frequency=100):
+def generate_accelerated_wait_times(acceleration=2*math.pi, duration=1, start_frequency=100):
     """Generate an accelerated sine wave for the given frequency and duration."""
-    start_time = perf_counter()
     rotation_per_step = 2*math.pi / FULL_ROTATION
     acceleration_constant = acceleration / rotation_per_step
     def k(step_time):
         return acceleration_constant * step_time * step_time + 1
-    wait_time = 1 / (2 * start_frequency)
-    while perf_counter() - start_time < duration:
-        yield GPIO.HIGH
-        sleep(wait_time)
-        yield GPIO.LOW
-        sleep(wait_time)
-        wait_time = wait_time / k(wait_time*2)
-        LOG.debug(f"Impuls time: {wait_time*2:.6f} seconds which is {1/wait_time/2:.2f} Hz")
+    wait_times=[1 / (2 * start_frequency)]
+    while sum(wait_times) < duration:
+        wt = wait_times[-1]
+        wait_times.append(wt / k(wt*2))
+
+        LOG.debug(f"Impuls time: {wt*2:.6f} seconds which is {1/wt/2:.2f} Hz")
+    return wait_times
 
 def rotate_platform(radians, duration=1, start_frequency=100):
     """Rotate the platform by a specified angle in radians."""
     acceleration = INERTIA_PLATFORM2WHEEL_RATIO*(2*radians)/(duration*duration)
-    for step in generate_accelerated_sine_wave(acceleration, duration, start_frequency):
-        GPIO.output(PINS["STEP"], step)
-    rotation_per_step = 2*math.pi / FULL_ROTATION
-    return acceleration*duration/rotation_per_step + start_frequency
+    for wt in generate_accelerated_wait_times(acceleration, duration, start_frequency):
+        GPIO.output(PINS["STEP"], GPIO.HIGH)
+        sleep(wt)
+        GPIO.output(PINS["STEP"], GPIO.LOW)
+        sleep(wt)
+    else:
+        rotation_per_step = 2*math.pi / FULL_ROTATION
+        final = acceleration*duration/rotation_per_step + start_frequency
+        LOG.debug(f"Final frequency should be: {final:.2f} Hz but is: {1/(2*wt):.2f} Hz")
+        return 1/(2*wt)  # Return the final frequency
 
 if __name__ == "__main__":
     setup()

@@ -39,10 +39,9 @@ if __name__ == "__main__":
                     print("Usage: rotacc [radians] [seconds] [start_frequency]")
                     continue
                 end_frequency = motor.rotate_platform(radians, seconds, start_frequency)
-                print(f"End frequency: {end_frequency:.2f} Hz")
-                # STAY_SECONDS = 3
-                # for state in motor.generate_sine_wave(end_frequency, STAY_SECONDS):
-                #     GPIO.output(motor.PINS["STEP"], state)
+                STAY_SECONDS = 3
+                for state in motor.generate_sine_wave(end_frequency, STAY_SECONDS):
+                    GPIO.output(motor.PINS["STEP"], state)
             elif cmd[0] == "freq":
                 try:
                     freq = float(cmd[1]) if len(cmd) > 1 else 0.75
