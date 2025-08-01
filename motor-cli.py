@@ -41,6 +41,7 @@ if __name__ == "__main__":
                     continue
                 end_wait_time = motor.rotate_platform(radians, seconds, start_frequency)
                 print(f"Rotation completed with end wait time: {end_wait_time:.6f} seconds")
+                end_wait_time *= 1.1
                 STAY_SECONDS = 3
                 while STAY_SECONDS > 0:
                     GPIO.output(motor.PINS["STEP"], GPIO.HIGH)
