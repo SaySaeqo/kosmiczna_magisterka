@@ -91,9 +91,9 @@ def rotate_platform(radians, duration=1, start_frequency=100):
         GPIO.output(PINS["STEP"], GPIO.LOW)
         sleep(wt)
     else:
-        rotation_per_step = 2*math.pi / FULL_ROTATION
-        final = acceleration*duration/rotation_per_step + start_frequency
-        LOG.debug(f"Final frequency should be: {final:.2f} Hz but is: {1/(2*wt):.2f} Hz")
+        # rotation_per_step = 2*math.pi / FULL_ROTATION
+        # final = acceleration*duration/rotation_per_step + start_frequency
+        # LOG.debug(f"Final frequency should be: {final:.2f} Hz but is: {1/(2*wt):.2f} Hz")
         return wt
 
 if __name__ == "__main__":
