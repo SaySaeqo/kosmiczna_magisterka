@@ -2,6 +2,7 @@ import RPi.GPIO as GPIO
 import motor
 import math
 import logging
+from time import sleep
 
 rotator = None
 
@@ -38,10 +39,14 @@ if __name__ == "__main__":
                 except ValueError:
                     print("Usage: rotacc [radians] [seconds] [start_frequency]")
                     continue
-                end_frequency = motor.rotate_platform(radians, seconds, start_frequency)
+                end_wait_time = motor.rotate_platform(radians, seconds, start_frequency)
                 STAY_SECONDS = 3
-                for state in motor.generate_sine_wave(end_frequency, STAY_SECONDS):
-                    GPIO.output(motor.PINS["STEP"], state)
+                while STAY_SECONDS > 0:
+                    GPIO.output(motor.PINS["STEP"], GPIO.HIGH)
+                    sleep(end_wait_time)
+                    GPIO.output(motor.PINS["STEP"], GPIO.LOW)
+                    sleep(end_wait_time)
+                    STAY_SECONDS -= end_wait_time * 2
             elif cmd[0] == "freq":
                 try:
                     freq = float(cmd[1]) if len(cmd) > 1 else 0.75

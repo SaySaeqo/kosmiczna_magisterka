@@ -72,12 +72,13 @@ def generate_accelerated_wait_times(acceleration=2*math.pi, duration=1, start_fr
     acceleration_constant = acceleration / rotation_per_step
     def k(step_time):
         return acceleration_constant * step_time * step_time + 1
-    wait_times=[1 / (2 * start_frequency)]
-    while sum(wait_times) < duration:
-        wt = wait_times[-1]
-        wait_times.append(wt / k(wt*2))
-
-        LOG.debug(f"Impuls time: {wt*2:.6f} seconds which is {1/wt/2:.2f} Hz")
+    last = 1 / (2 * start_frequency)
+    wait_times=[last]
+    while duration > 0:
+        last = last * k(last*2)
+        wait_times.append(last)
+        duration -= last * 2
+        LOG.debug(f"Impuls time: {last*2:.6f} seconds which is {1/last/2:.2f} Hz")
     return wait_times
 
 def rotate_platform(radians, duration=1, start_frequency=100):
@@ -92,7 +93,7 @@ def rotate_platform(radians, duration=1, start_frequency=100):
         rotation_per_step = 2*math.pi / FULL_ROTATION
         final = acceleration*duration/rotation_per_step + start_frequency
         LOG.debug(f"Final frequency should be: {final:.2f} Hz but is: {1/(2*wt):.2f} Hz")
-        return 1/(2*wt)  # Return the final frequency
+        return wt
 
 if __name__ == "__main__":
     setup()
