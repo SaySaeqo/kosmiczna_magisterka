@@ -1,3 +1,5 @@
+#!/bin/python
+
 import RPi.GPIO as GPIO
 import motor
 import math
