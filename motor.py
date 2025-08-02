@@ -98,7 +98,7 @@ def rotate_platform(radians, duration=1, start_frequency=100):
     #     return wt
     
     # Deaccelerate
-    for wt in reversed(wait_times[:-1]):
+    for wt in reversed(wait_times):
         GPIO.output(PINS["STEP"], GPIO.HIGH)
         sleep(wt)
         GPIO.output(PINS["STEP"], GPIO.LOW)
