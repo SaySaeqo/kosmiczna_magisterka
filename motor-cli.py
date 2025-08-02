@@ -41,15 +41,15 @@ if __name__ == "__main__":
                 except ValueError:
                     print("Usage: rotacc [radians] [seconds] [start_frequency]")
                     continue
-                end_wait_time = motor.rotate_platform(radians, seconds, start_frequency)
-                end_wait_time *= 1.1
-                STAY_SECONDS = 3
-                while STAY_SECONDS > 0:
-                    GPIO.output(motor.PINS["STEP"], GPIO.HIGH)
-                    sleep(end_wait_time)
-                    GPIO.output(motor.PINS["STEP"], GPIO.LOW)
-                    sleep(end_wait_time)
-                    STAY_SECONDS -= end_wait_time * 2
+                motor.rotate_platform(radians, seconds, start_frequency)
+                # end_wait_time *= 1.1
+                # STAY_SECONDS = 3
+                # while STAY_SECONDS > 0:
+                #     GPIO.output(motor.PINS["STEP"], GPIO.HIGH)
+                #     sleep(end_wait_time)
+                #     GPIO.output(motor.PINS["STEP"], GPIO.LOW)
+                #     sleep(end_wait_time)
+                #     STAY_SECONDS -= end_wait_time * 2
             elif cmd[0] == "freq":
                 try:
                     freq = float(cmd[1]) if len(cmd) > 1 else 0.75
