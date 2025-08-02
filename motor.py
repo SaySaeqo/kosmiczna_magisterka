@@ -86,6 +86,7 @@ def rotate_platform(radians, duration=1, start_frequency=100):
     """Rotate the platform by a specified angle in radians."""
     acceleration = INERTIA_PLATFORM2WHEEL_RATIO*(2*radians)/(duration*duration)
     wait_times = accelerated_wait_times(acceleration, duration, start_frequency)
+    GPIO.output(PINS["DIR"], GPIO.LOW)
     for wt in wait_times:
         GPIO.output(PINS["STEP"], GPIO.HIGH)
         sleep(wt)
@@ -98,11 +99,14 @@ def rotate_platform(radians, duration=1, start_frequency=100):
     #     return wt
     
     # Deaccelerate
-    for wt in reversed(wait_times):
+    GPIO.output(PINS["DIR"], GPIO.HIGH)
+    for wt in wait_times:
         GPIO.output(PINS["STEP"], GPIO.HIGH)
         sleep(wt)
         GPIO.output(PINS["STEP"], GPIO.LOW)
         sleep(wt)
+
+    GPIO.output(PINS["DIR"], GPIO.LOW)
 
 if __name__ == "__main__":
     setup()
