@@ -4,7 +4,6 @@ import RPi.GPIO as GPIO
 import motor
 import math
 import logging
-from time import sleep
 
 rotator = None
 

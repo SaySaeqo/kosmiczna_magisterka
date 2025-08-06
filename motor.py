@@ -1,9 +1,9 @@
 import RPi.GPIO as GPIO
-from time import sleep, perf_counter
-import threading
+from time import sleep
+from threading import Thread
 import math
 import logging
-import functools
+from functools import cache
 
 FULL_ROTATION = 200
 INERTIA_PLATFORM2WHEEL_RATIO = 3.72
@@ -55,7 +55,7 @@ class MotorRotator:
                 sleep(wait_time)
                 GPIO.output(PINS["STEP"], GPIO.LOW)
                 sleep(wait_time)
-        self.rotate_job = threading.Thread(target=rotate, args=(self,))
+        self.rotate_job = Thread(target=rotate, args=(self,))
         self.rotate_job.start()
 
     def set_frequency(self, frequency):
@@ -67,7 +67,7 @@ class MotorRotator:
         self.active = False
         self.rotate_job.join()
 
-@functools.cache
+@cache
 def accelerated_wait_times(acceleration=2*math.pi, duration=1, start_frequency=100):
     """Generate an accelerated sine wave for the given frequency and duration."""
     rotation_per_step = 2*math.pi / FULL_ROTATION
