@@ -13,10 +13,31 @@ if __name__ == "__main__":
     try:
         motor.setup()
         motor.reset()
+        next_cmd = None
+        last_result = None
         while True:
-            GPIO.output(motor.PINS["EN"], GPIO.HIGH)  # Disable motor driver
-            cmd = input("Enter command: ").strip().split(" ")
-            GPIO.output(motor.PINS["EN"], GPIO.LOW)  # Enable motor driver
+            # Command chaining and input handling
+            if next_cmd:
+                cmd = next_cmd
+                next_cmd = None
+            else:
+                GPIO.output(motor.PINS["EN"], GPIO.HIGH)  # Disable motor driver
+                cmd = input("Enter command: ").strip().split(" ")
+                GPIO.output(motor.PINS["EN"], GPIO.LOW)  # Enable motor driver
+            if "+" in cmd:
+                plus_idx = cmd.index("+")
+                next_cmd = cmd[plus_idx + 1:] if plus_idx + 1 < len(cmd) else None
+                cmd = cmd[:plus_idx]
+            if "-" in cmd and last_result:
+                minus_idx = cmd.index("-")
+                cmd[minus_idx] = last_result
+            else:
+                print(f"There is no result for previous command to '{cmd[0]}'. Exiting command chain...")
+                next_cmd = None
+                cmd = None
+                last_result = None
+                continue
+
 
             if cmd[0] == "rot":
                 if rotator is not None:
@@ -43,7 +64,7 @@ if __name__ == "__main__":
                 except ValueError:
                     print("Usage: rotacc [radians] [seconds] [start_frequency]")
                     continue
-                motor.rotate_platform(radians, seconds, start_frequency)
+                last_result = motor.rotate_platform(radians, seconds, start_frequency)
             elif cmd[0] == "freq":
                 try:
                     freq = float(cmd[1]) if len(cmd) > 1 else 0.75

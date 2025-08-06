@@ -3,6 +3,7 @@ from time import sleep, perf_counter
 import threading
 import math
 import logging
+import functools
 
 FULL_ROTATION = 200
 INERTIA_PLATFORM2WHEEL_RATIO = 3.72
@@ -34,9 +35,9 @@ def reset():
 
 def generate_sine_wave(frequency=1, duration=1):
     """Generate a sine wave for the given frequency and duration."""
-    start_time = perf_counter()
     wait_time = 1 / (2 * frequency)
-    while perf_counter() - start_time < duration:
+    how_many_steps = int(duration / (2*wait_time))
+    for _ in range(how_many_steps):
         yield GPIO.HIGH
         sleep(wait_time)
         yield GPIO.LOW
@@ -66,6 +67,7 @@ class MotorRotator:
         self.active = False
         self.rotate_job.join()
 
+@functools.cache
 def accelerated_wait_times(acceleration=2*math.pi, duration=1, start_frequency=100):
     """Generate an accelerated sine wave for the given frequency and duration."""
     rotation_per_step = 2*math.pi / FULL_ROTATION
@@ -79,6 +81,7 @@ def accelerated_wait_times(acceleration=2*math.pi, duration=1, start_frequency=1
         last = last / k(last*2)
         wait_times.append(last)
         duration -= last * 2
+    else:
         LOG.debug(f"Impuls time: {last*2:.6f} seconds which is {1/last/2:.2f} Hz")
     return wait_times
 
@@ -91,11 +94,11 @@ def rotate_platform(radians, duration=1, start_frequency=100):
         sleep(wt)
         GPIO.output(PINS["STEP"], GPIO.LOW)
         sleep(wt)
-    # else:
+    else:
     #     # rotation_per_step = 2*math.pi / FULL_ROTATION
     #     # final = acceleration*duration/rotation_per_step + start_frequency
     #     # LOG.debug(f"Final frequency should be: {final:.2f} Hz but is: {1/(2*wt):.2f} Hz")
-    #     return wt
+        return 1/(2*wt) # Return the final frequency
     
     # Deaccelerate
     # for wt in reversed(wait_times):
@@ -105,14 +108,8 @@ def rotate_platform(radians, duration=1, start_frequency=100):
     #     sleep(wt)
 
     # wait in motion
-    end_wait_time = wait_times[-1]
-    STAY_SECONDS = 3
-    while STAY_SECONDS > 0:
-        GPIO.output(PINS["STEP"], GPIO.HIGH)
-        sleep(end_wait_time)
-        GPIO.output(PINS["STEP"], GPIO.LOW)
-        sleep(end_wait_time)
-        STAY_SECONDS -= end_wait_time * 2
+    # for state in generate_sine_wave(1/(2*wait_times[-1]), 3):
+    #     GPIO.output(PINS["STEP"], state)
 
 
 if __name__ == "__main__":
