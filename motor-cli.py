@@ -14,7 +14,9 @@ if __name__ == "__main__":
         motor.setup()
         motor.reset()
         while True:
+            GPIO.output(motor.PINS["EN"], GPIO.HIGH)  # Disable motor driver
             cmd = input("Enter command: ").strip().split(" ")
+            GPIO.output(motor.PINS["EN"], GPIO.LOW)  # Enable motor driver
 
             if cmd[0] == "rot":
                 if rotator is not None:
@@ -42,14 +44,6 @@ if __name__ == "__main__":
                     print("Usage: rotacc [radians] [seconds] [start_frequency]")
                     continue
                 motor.rotate_platform(radians, seconds, start_frequency)
-                # end_wait_time *= 1.1
-                # STAY_SECONDS = 3
-                # while STAY_SECONDS > 0:
-                #     GPIO.output(motor.PINS["STEP"], GPIO.HIGH)
-                #     sleep(end_wait_time)
-                #     GPIO.output(motor.PINS["STEP"], GPIO.LOW)
-                #     sleep(end_wait_time)
-                #     STAY_SECONDS -= end_wait_time * 2
             elif cmd[0] == "freq":
                 try:
                     freq = float(cmd[1]) if len(cmd) > 1 else 0.75
