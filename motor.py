@@ -86,6 +86,16 @@ def accelerated_wait_times(acceleration=2*math.pi, duration=1, start_frequency=1
     return wait_times
 
 def rotate_platform(radians, duration=1, start_frequency=100):
+    acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
+    wait_times = accelerated_wait_times(acceleration, duration, start_frequency)
+    for wt in wait_times:
+        GPIO.output(PINS["STEP"], GPIO.HIGH)
+        sleep(wt)
+        GPIO.output(PINS["STEP"], GPIO.LOW)
+        sleep(wt)
+    return wt  # Return the final wait time
+
+def rotate_platform2(radians, duration=1, start_frequency=100):
     """Rotate the platform by a specified angle in radians."""
     dur= duration/2
     acceleration = INERTIA_PLATFORM2WHEEL_RATIO*radians/dur
