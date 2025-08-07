@@ -90,7 +90,7 @@ def rotate_platform(radians, duration=1, start_frequency=100):
         sleep(wt)
         GPIO.output(PINS["STEP"], GPIO.LOW)
         sleep(wt)
-    return wt  # Return the final wait time
+    return 1/wt/2  # Return the final frequency
 
 def rotate_platform2(radians, duration=1, start_frequency=100):
     """Rotate the platform by a specified angle in radians."""
