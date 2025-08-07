@@ -106,6 +106,11 @@ if __name__ == "__main__":
                 print("Current pin states:")
                 for name, pin in motor.PINS.items():
                     print(f"{name}: {GPIO.input(pin)}")
+            elif cmd[0] == "verbose":
+                if len(cmd) > 1 and cmd[1] == "0":
+                    logging.basicConfig(level=logging.DEBUG, filemode="a", filename="motor.log")
+                else:
+                    logging.basicConfig(level=logging.DEBUG)
     except KeyboardInterrupt: print()
     finally:
         motor.reset()
