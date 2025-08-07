@@ -46,7 +46,7 @@ if __name__ == "__main__":
                 print("Rotating...")
                 try:
                     freq = int(cmd[1]) if len(cmd) > 1 else 150
-                    seconds = int(cmd[2]) if len(cmd) > 2 else 1
+                    seconds = float(cmd[2]) if len(cmd) > 2 else 1
                 except ValueError:
                     print("Usage: rot [frequency] [seconds]")
                     continue
