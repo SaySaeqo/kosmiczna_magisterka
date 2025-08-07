@@ -92,6 +92,16 @@ def rotate_platform(radians, duration=1, start_frequency=100):
         sleep(wt)
     return 1/wt/2  # Return the final frequency
 
+def rotate_platform_deceleration(radians, duration=1, start_frequency=100):
+    acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
+    wait_times = [impulse/2 for impulse in accelerated_impulse_durations(-acceleration, duration, 1/start_frequency)]
+    for wt in wait_times:
+        GPIO.output(PINS["STEP"], GPIO.HIGH)
+        sleep(wt)
+        GPIO.output(PINS["STEP"], GPIO.LOW)
+        sleep(wt)
+    return 1/wt/2  # Return the final frequency
+
 def rotate_platform2(radians, duration=1, start_frequency=100):
     """Rotate the platform by a specified angle in radians."""
     dur= duration/2

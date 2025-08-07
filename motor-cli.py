@@ -65,6 +65,19 @@ if __name__ == "__main__":
                     print("Usage: rotacc [radians] [seconds] [start_frequency]")
                     continue
                 last_result = motor.rotate_platform(radians, seconds, start_frequency)
+            elif cmd[0] == "rotdec":
+                if rotator is not None:
+                    print("Motor is already rotating. Use 'freq 0' to stop it first.")
+                    continue
+                print("Rotating with deceleration...")
+                try:
+                    radians = float(cmd[1]) if len(cmd) > 1 else math.pi
+                    seconds = float(cmd[2]) if len(cmd) > 2 else 1
+                    start_frequency = int(cmd[3]) if len(cmd) > 3 else 100
+                except ValueError:
+                    print("Usage: rotdec [radians] [seconds] [start_frequency]")
+                    continue
+                last_result = motor.rotate_platform_deceleration(radians, seconds, start_frequency)
             elif cmd[0] == "rotacc2":
                 if rotator is not None:
                     print("Motor is already rotating. Use 'freq 0' to stop it first.")
@@ -106,11 +119,6 @@ if __name__ == "__main__":
                 print("Current pin states:")
                 for name, pin in motor.PINS.items():
                     print(f"{name}: {GPIO.input(pin)}")
-            elif cmd[0] == "verbose":
-                if len(cmd) > 1 and cmd[1] == "0":
-                    logging.basicConfig(level=logging.DEBUG, filemode="a", filename="motor.log", force=True)
-                else:
-                    logging.basicConfig(level=logging.DEBUG, force=True)
     except KeyboardInterrupt: print()
     finally:
         motor.reset()
