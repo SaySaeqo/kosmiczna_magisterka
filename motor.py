@@ -6,6 +6,7 @@ import logging
 from functools import cache
 
 FULL_ROTATION = 200
+ROTATION_PER_STEP = 2*math.pi / FULL_ROTATION
 INERTIA_PLATFORM2WHEEL_RATIO = 3.72
 
 NOT_ASSIGNED = 26
@@ -68,26 +69,22 @@ class MotorRotator:
         self.rotate_job.join()
 
 @cache
-def accelerated_wait_times(acceleration=2*math.pi, duration=1, start_frequency=100):
+def accelerated_impulse_durations(acceleration=2*math.pi, duration=1, t0=1/100):
     """Generate an accelerated sine wave for the given frequency and duration."""
-    rotation_per_step = 2*math.pi / FULL_ROTATION
-    acceleration_constant = acceleration / rotation_per_step
-    def k(step_time):
-        return acceleration_constant * step_time * step_time + 1
-    last = 1 / (2 * start_frequency)
-    wait_times=[last]
-    duration -= last * 2
+    acceleration_constant = acceleration / ROTATION_PER_STEP
+    impulse_durations=[t0]
+    duration -= impulse_durations[0]
+    # Next impuls times
     while duration > 0:
-        last = last / k(last*2)
-        wait_times.append(last)
-        duration -= last * 2
+        impulse_durations += [impulse_durations[-1] / (1 + acceleration_constant * impulse_durations[-1]**2)]
+        duration -= impulse_durations[-1]
     else:
-        LOG.debug(f"Impuls time: {last*2:.6f} seconds which is {1/last/2:.2f} Hz")
-    return wait_times
+        LOG.debug(f"Last impuls time: {impulse_durations[-1]:.6f} s or {1/impulse_durations[-1]:.2f} Hz")
+    return impulse_durations
 
 def rotate_platform(radians, duration=1, start_frequency=100):
     acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
-    wait_times = accelerated_wait_times(acceleration, duration, start_frequency)
+    wait_times = [impulse/2 for impulse in accelerated_impulse_durations(acceleration, duration, 1/start_frequency)]
     for wt in wait_times:
         GPIO.output(PINS["STEP"], GPIO.HIGH)
         sleep(wt)
@@ -99,7 +96,7 @@ def rotate_platform2(radians, duration=1, start_frequency=100):
     """Rotate the platform by a specified angle in radians."""
     dur= duration/2
     acceleration = INERTIA_PLATFORM2WHEEL_RATIO*radians/dur
-    wait_times = accelerated_wait_times(acceleration, dur, start_frequency)
+    wait_times = [impulse/2 for impulse in accelerated_impulse_durations(acceleration, dur, 1/start_frequency)]
     for wt in wait_times:
         GPIO.output(PINS["STEP"], GPIO.HIGH)
         sleep(wt)
