@@ -97,27 +97,19 @@ def rotate_platform2(radians, duration=1, start_frequency=100):
     dur= duration/2
     acceleration = INERTIA_PLATFORM2WHEEL_RATIO*radians/dur
     wait_times = [impulse/2 for impulse in accelerated_impulse_durations(acceleration, dur, 1/start_frequency)]
+    negated_wait_times = [impulse/2 for impulse in accelerated_impulse_durations(-acceleration, dur, wait_times[-1]*2)]
     for wt in wait_times:
         GPIO.output(PINS["STEP"], GPIO.HIGH)
         sleep(wt)
         GPIO.output(PINS["STEP"], GPIO.LOW)
         sleep(wt)
-    # else:
-    # #     # rotation_per_step = 2*math.pi / FULL_ROTATION
-    # #     # final = acceleration*duration/rotation_per_step + start_frequency
-    # #     # LOG.debug(f"Final frequency should be: {final:.2f} Hz but is: {1/(2*wt):.2f} Hz")
-    #     return 1/(2*wt) # Return the final frequency
     
     # Deaccelerate
-    for wt in reversed(wait_times):
+    for wt in negated_wait_times:
         GPIO.output(PINS["STEP"], GPIO.HIGH)
         sleep(wt)
         GPIO.output(PINS["STEP"], GPIO.LOW)
         sleep(wt)
-
-    # wait in motion
-    # for state in generate_sine_wave(1/(2*wait_times[-1]), 3):
-    #     GPIO.output(PINS["STEP"], state)
 
 
 if __name__ == "__main__":
