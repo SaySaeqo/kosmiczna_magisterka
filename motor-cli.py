@@ -110,7 +110,7 @@ if __name__ == "__main__":
                 if len(cmd) > 1 and cmd[1] == "0":
                     logging.basicConfig(level=logging.DEBUG, filemode="a", filename="motor.log", force=True)
                 else:
-                    logging.basicConfig(level=logging.INFO, filemode="a", filename="motor.log", force=True)
+                    logging.basicConfig(level=logging.DEBUG, force=True)
     except KeyboardInterrupt: print()
     finally:
         motor.reset()
