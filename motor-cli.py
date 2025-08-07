@@ -27,15 +27,16 @@ if __name__ == "__main__":
                 plus_idx = cmd.index("+")
                 next_cmd = cmd[plus_idx + 1:] if plus_idx + 1 < len(cmd) else None
                 cmd = cmd[:plus_idx]
-            if "-" in cmd and last_result:
-                minus_idx = cmd.index("-")
-                cmd[minus_idx] = last_result
-            else:
-                print(f"There is no result for previous command to '{cmd[0]}'. Exiting command chain...")
-                next_cmd = None
-                cmd = None
-                last_result = None
-                continue
+            if "-" in cmd:
+                if last_result:
+                    minus_idx = cmd.index("-")
+                    cmd[minus_idx] = last_result
+                else:
+                    print(f"There is no result for previous command to '{cmd[0]}'. Exiting command chain...")
+                    next_cmd = None
+                    cmd = None
+                    last_result = None
+                    continue
 
 
             if cmd[0] == "rot":
