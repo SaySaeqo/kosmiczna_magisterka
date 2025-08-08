@@ -3,7 +3,7 @@
 import motor
 import RPi.GPIO as GPIO
 import math
-from time import sleep
+import time
 
 
 def calibrate_inertia_ratio():
@@ -37,32 +37,17 @@ def calibrate_inertia_ratio():
     
     print(f"Final inertia ratio: {unit + tenths + hundredths}")
 
-def calibrate_wheel_inertia():
-    acceleration = math.pi
-    start_frequency = 100
-    start_speed = motor.ROTATION_PER_STEP * start_frequency
-    t = 1
-    impulses = motor.accelerated_impulse_durations(acceleration, t, 1/start_frequency)
-    theoretical_final_speed = start_speed + acceleration * t
-    final_frequency = 1/impulses[-1]
-    final_speed = motor.ROTATION_PER_STEP * final_frequency
+def calibrate_decay_time():
+    freq =  motor.rotate_platform(math.pi, 1, 100)
 
-    print(f"Theoretical final speed: {theoretical_final_speed:.3f} rad/s")
-    print(f"Final speed: {final_speed:.3f} rad/s")
-
-    for state in motor.generate_sine_wave(start_frequency, t):
-        GPIO.output(motor.PINS["STEP"], state)
-
-    for wt in [i/2 for i in impulses]:
-        GPIO.output(motor.PINS["STEP"], GPIO.HIGH)
-        sleep(wt)
-        GPIO.output(motor.PINS["STEP"], GPIO.LOW)
-        sleep(wt)
-
-    print("Acceleration completed!")
-
-    for state in motor.generate_sine_wave(final_frequency, 10):
-        GPIO.output(motor.PINS["STEP"], state)
+    rotator = motor.MotorRotator(freq)
+    start = time.perf_counter()
+    input("Press Enter to stop the motor...")
+    rotator.stop()
+    end = time.perf_counter()
+    decay_time = end - start
+    print(f"Decay time: {decay_time:.3f} seconds")
+    
 
 
 if __name__ == "__main__":
@@ -70,7 +55,7 @@ if __name__ == "__main__":
         motor.setup()
         motor.reset()
 
-        calibrate_wheel_inertia()
+        calibrate_decay_time()
         
 
     except KeyboardInterrupt: ...

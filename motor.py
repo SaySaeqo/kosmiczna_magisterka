@@ -60,6 +60,9 @@ class MotorRotator:
         self.rotate_job.start()
 
     def set_frequency(self, frequency):
+        if frequency <= 0:
+            self.stop()
+            return
         self.frequency = frequency
         print(f"Frequency set to {self.frequency} Hz")
 
