@@ -20,9 +20,11 @@ if __name__ == "__main__":
                 cmd = next_cmd
                 next_cmd = None
             else:
-                GPIO.output(motor.PINS["EN"], GPIO.HIGH)  # Disable motor driver
+                if rotator is None:
+                    GPIO.output(motor.PINS["EN"], GPIO.HIGH)  # Disable motor driver
                 cmd = input("Enter command: ").strip().split(" ")
-                GPIO.output(motor.PINS["EN"], GPIO.LOW)  # Enable motor driver
+                if rotator is None:
+                    GPIO.output(motor.PINS["EN"], GPIO.LOW)  # Enable motor driver
             if "+" in cmd:
                 plus_idx = cmd.index("+")
                 next_cmd = cmd[plus_idx + 1:] if plus_idx + 1 < len(cmd) else None
@@ -93,7 +95,7 @@ if __name__ == "__main__":
                 motor.rotate_platform2(radians, seconds, start_frequency)
             elif cmd[0] == "freq":
                 try:
-                    freq = float(cmd[1]) if len(cmd) > 1 else 0.75
+                    freq = int(cmd[1]) if len(cmd) > 1 else 100
                     if freq <= 0:
                         rotator.stop()
                         rotator = None
