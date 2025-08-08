@@ -3,6 +3,7 @@
 import motor
 import RPi.GPIO as GPIO
 import math
+from time import sleep
 
 
 def calibrate_inertia_ratio():
@@ -49,25 +50,19 @@ def calibrate_wheel_inertia():
     print(f"Theoretical final speed: {theoretical_final_speed:.3f} rad/s")
     print(f"Final speed: {final_speed:.3f} rad/s")
 
-    for wt in motor.generate_sine_wave(start_frequency, t):
-        GPIO.output(motor.PINS["STEP"], GPIO.HIGH)
-        motor.sleep(wt)
-        GPIO.output(motor.PINS["STEP"], GPIO.LOW)
-        motor.sleep(wt)
+    for state in motor.generate_sine_wave(start_frequency, t):
+        GPIO.output(motor.PINS["STEP"], statet)
 
     for wt in [i/2 for i in impulses]:
         GPIO.output(motor.PINS["STEP"], GPIO.HIGH)
-        motor.sleep(wt)
+        sleep(wt)
         GPIO.output(motor.PINS["STEP"], GPIO.LOW)
-        motor.sleep(wt)
+        sleep(wt)
 
     print("Acceleration completed!")
-    
-    for wt in motor.generate_sine_wave(final_frequency, 10):
-        GPIO.output(motor.PINS["STEP"], GPIO.HIGH)
-        motor.sleep(wt)
-        GPIO.output(motor.PINS["STEP"], GPIO.LOW)
-        motor.sleep(wt)
+
+    for state in motor.generate_sine_wave(final_frequency, 10):
+        GPIO.output(motor.PINS["STEP"], state)
 
 
 if __name__ == "__main__":
