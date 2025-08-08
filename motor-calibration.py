@@ -42,7 +42,7 @@ def calibrate_decay_time():
     freq =  motor.rotate_platform(math.pi, 1, 100)
     motor.LOG.info(f"Initial frequency: {freq} Hz")
 
-    rotator = motor.MotorRotator(freq)
+    rotator = motor.MotorRotator(freq*0.99)
     start = time.perf_counter()
     input("Press Enter to stop the motor...")
     rotator.stop()
