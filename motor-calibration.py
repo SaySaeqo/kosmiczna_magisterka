@@ -40,9 +40,10 @@ def calibrate_inertia_ratio():
 
 def calibrate_decay_time():
     freq =  motor.rotate_platform(2, 1, 50)
+    freq *= 0.9
     motor.LOG.info(f"Initial frequency: {freq} Hz")
 
-    rotator = motor.MotorRotator(freq*0.9)
+    rotator = motor.MotorRotator(freq)
     start = time.perf_counter()
     input("Press Enter to stop the motor...")
     rotator.stop()
