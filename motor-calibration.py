@@ -5,6 +5,7 @@ import RPi.GPIO as GPIO
 import math
 import time
 import logging
+import threading
 
 
 def calibrate_inertia_ratio():
@@ -39,18 +40,27 @@ def calibrate_inertia_ratio():
     print(f"Final inertia ratio: {unit + tenths + hundredths}")
 
 def calibrate_decay_time():
-    freq =  motor.rotate_platform(2, 1, 50)
-    freq *= 0.9
-    motor.LOG.info(f"Initial frequency: {freq} Hz")
+    active = True
+    start = None
+    def accelerate_then_stay():
+        nonlocal active, start
+        freq =  motor.rotate_platform(2, 1, 50)
+        wait_time = 1 / (2 * freq)
+        start = time.perf_counter()
+        while active:
+            GPIO.output(motor.PINS["STEP"], GPIO.HIGH)
+            time.sleep(wait_time)
+            GPIO.output(motor.PINS["STEP"], GPIO.LOW)
+            time.sleep(wait_time)
 
-    rotator = motor.MotorRotator(freq)
-    start = time.perf_counter()
+    thread = threading.Thread(target=accelerate_then_stay)
+    thread.start()
     input("Press Enter to stop the motor...")
-    rotator.stop()
     end = time.perf_counter()
+    active = False
     decay_time = end - start
     print(f"Decay time: {decay_time:.3f} seconds")
-    
+    thread.join()
 
 
 if __name__ == "__main__":
