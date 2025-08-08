@@ -45,17 +45,17 @@ def generate_sine_wave(frequency=1, duration=1):
         sleep(wait_time)
 
 class MotorRotator:
-    def __init__(self, frequency=0.75):
+    def __init__(self, frequency=100):
         self.frequency = frequency
         self.active = True
+        self.wait_time = 1 / (2 * self.frequency)
         def rotate(self):
             print("Rotating...")
             while self.active:
-                wait_time = 1 / (2 * self.frequency)
                 GPIO.output(PINS["STEP"], GPIO.HIGH)
-                sleep(wait_time)
+                sleep(self.wait_time)
                 GPIO.output(PINS["STEP"], GPIO.LOW)
-                sleep(wait_time)
+                sleep(self.wait_time)
         self.rotate_job = Thread(target=rotate, args=(self,))
         self.rotate_job.start()
 
@@ -64,6 +64,7 @@ class MotorRotator:
             self.stop()
             return
         self.frequency = frequency
+        self.wait_time = 1 / (2 * self.frequency)
         print(f"Frequency set to {self.frequency} Hz")
 
     def stop(self):
