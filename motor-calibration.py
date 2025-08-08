@@ -56,7 +56,7 @@ if __name__ == "__main__":
     try:
         motor.setup()
         motor.reset()
-        logging.basicConfig(level=logging.DEBUG, filemode="w", filename="motor_calibration.log")
+        logging.basicConfig(level=logging.DEBUG, filemode="w", filename="motor-calibration.log")
 
         calibrate_decay_time()
         
