@@ -61,6 +61,7 @@ def calibrate_decay_time():
     decay_time = end - start
     print(f"Decay time: {decay_time:.3f} seconds")
     thread.join()
+    return decay_time
 
 
 if __name__ == "__main__":
@@ -69,8 +70,12 @@ if __name__ == "__main__":
         motor.reset()
         logging.basicConfig(level=logging.DEBUG, filemode="w", filename="motor-calibration.log")
 
-        calibrate_decay_time()
-        
+        decay_times = []
+        for _ in range(20):
+            decay_time = calibrate_decay_time()
+            decay_times.append(decay_time)
+        print(f"Average decay time: {sum(decay_times) / len(decay_times):.3f} seconds")
+        print(f"{decay_times=}")
 
     except KeyboardInterrupt: ...
     finally:
