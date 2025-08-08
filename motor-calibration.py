@@ -4,6 +4,7 @@ import motor
 import RPi.GPIO as GPIO
 import math
 import time
+import logging
 
 
 def calibrate_inertia_ratio():
@@ -39,6 +40,7 @@ def calibrate_inertia_ratio():
 
 def calibrate_decay_time():
     freq =  motor.rotate_platform(math.pi, 1, 100)
+    motor.LOG.info(f"Initial frequency: {freq} Hz")
 
     rotator = motor.MotorRotator(freq)
     start = time.perf_counter()
@@ -54,6 +56,7 @@ if __name__ == "__main__":
     try:
         motor.setup()
         motor.reset()
+        logging.basicConfig(level=logging.DEBUG, filemode="w", filename="motor_calibration.log")
 
         calibrate_decay_time()
         
