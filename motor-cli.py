@@ -54,6 +54,19 @@ if __name__ == "__main__":
                     continue
                 for state in motor.generate_sine_wave(freq, seconds):
                     GPIO.output(motor.PINS["STEP"], state)
+            elif cmd[0] == "acc":
+                if rotator is not None:
+                    print("Motor is already rotating. Use 'freq 0' to stop it first.")
+                    continue
+                print("Accelerating flywheel...")
+                try:
+                    start_frequency = int(cmd[1]) if len(cmd) > 1 else 100
+                    final_frequency = int(cmd[2]) if len(cmd) > 2 else 200
+                    seconds = float(cmd[3]) if len(cmd) > 3 else 1
+                except ValueError:
+                    print("Usage: acc [start_frequency] [final_frequency] [seconds]")
+                    continue
+                last_result = motor.accelerate(start_frequency, final_frequency, seconds)
             elif cmd[0] == "rotacc":
                 if rotator is not None:
                     print("Motor is already rotating. Use 'freq 0' to stop it first.")
