@@ -97,7 +97,8 @@ if __name__ == "__main__":
                 try:
                     freq = int(cmd[1]) if len(cmd) > 1 else 100
                     if freq <= 0:
-                        rotator.stop()
+                        if rotator:
+                            rotator.stop()
                         rotator = None
                     elif rotator is None:
                         rotator = motor.MotorRotator(freq)
