@@ -74,6 +74,7 @@ if __name__ == "__main__":
         for _ in range(20):
             decay_time = calibrate_decay_time()
             decay_times.append(decay_time)
+            input("Press Enter to continue to the next decay time...")
         print(f"Average decay time: {sum(decay_times) / len(decay_times):.3f} seconds")
         print(f"{decay_times=}")
 
