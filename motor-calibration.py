@@ -51,7 +51,7 @@ def calibrate_wheel_inertia():
     print(f"Final speed: {final_speed:.3f} rad/s")
 
     for state in motor.generate_sine_wave(start_frequency, t):
-        GPIO.output(motor.PINS["STEP"], statet)
+        GPIO.output(motor.PINS["STEP"], state)
 
     for wt in [i/2 for i in impulses]:
         GPIO.output(motor.PINS["STEP"], GPIO.HIGH)
