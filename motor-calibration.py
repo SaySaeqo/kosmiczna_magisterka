@@ -13,7 +13,7 @@ def calibrate_inertia_ratio():
 
     for u in range(1, 11):
         motor.INERTIA_PLATFORM2WHEEL_RATIO = u
-        motor.rotate_platform2(math.pi, 1, 100)
+        motor.rotate_platform(math.pi)
         next_step = input(f"Is {u} to much? (y/n): ").strip().lower()
         if next_step == "y":
             unit = u - 1
@@ -22,7 +22,7 @@ def calibrate_inertia_ratio():
     for t in range(1, 10):
         t = t / 10.0
         motor.INERTIA_PLATFORM2WHEEL_RATIO = unit + t
-        motor.rotate_platform2(math.pi, 1, 100)
+        motor.rotate_platform(math.pi)
         next_step = input(f"Is {unit + t} to much? (y/n): ").strip().lower()
         if next_step == "y":
             tenths = t - 0.1
@@ -31,7 +31,7 @@ def calibrate_inertia_ratio():
     for h in range(1, 10):
         h = h / 100.0
         motor.INERTIA_PLATFORM2WHEEL_RATIO = unit + tenths + h
-        motor.rotate_platform2(math.pi, 1, 100)
+        motor.rotate_platform(math.pi)
         next_step = input(f"Is {unit + tenths + h} to much? (y/n): ").strip().lower()
         if next_step == "y":
             hundredths = h - 0.01
@@ -70,17 +70,21 @@ if __name__ == "__main__":
         motor.reset()
         logging.basicConfig(level=logging.DEBUG, filemode="w", filename="motor-calibration.log")
 
-        decay_times = []
-        for _ in range(20):
-            decay_time = calibrate_decay_time()
-            decay_times.append(decay_time)
-            input("Press Enter to continue to the next decay time...")
-        print(f"Average decay time: {sum(decay_times) / len(decay_times):.3f} seconds")
-        print(f"{decay_times=}")
+        CALLIBRATION_TYPE = 2
 
-        # Average decay time: 2.966 seconds
-        # decay_times=[4.29820970500009, 3.8321442379999553, 2.6101399949998267, 3.9040863259999696, 2.604079805000083, 2.5939705389998835, 2.1244751449999058, 2.5221408759998667, 3.583803927999952, 3.6725272829999085, 3.216739906000157, 3.1135998590000327, 3.5238182850000612, 2.698659054000018, 2.28576684199993, 2.3034265280000454, 2.5562098079999487, 2.5932729310000013, 2.4178872039999533, 2.8656973120000657]
-
+        if CALLIBRATION_TYPE == 1:
+            calibrate_inertia_ratio()
+        elif CALLIBRATION_TYPE == 2:
+            calibrate_decay_time()
+            decay_times = []
+            for _ in range(20):
+                decay_time = calibrate_decay_time()
+                decay_times.append(decay_time)
+                input("Press Enter to continue to the next decay time...")
+            print(f"Average decay time: {sum(decay_times) / len(decay_times):.3f} seconds")
+            print(f"{decay_times=}")
+            # Average decay time: 2.966 seconds
+            # decay_times=[4.29820970500009, 3.8321442379999553, 2.6101399949998267, 3.9040863259999696, 2.604079805000083, 2.5939705389998835, 2.1244751449999058, 2.5221408759998667, 3.583803927999952, 3.6725272829999085, 3.216739906000157, 3.1135998590000327, 3.5238182850000612, 2.698659054000018, 2.28576684199993, 2.3034265280000454, 2.5562098079999487, 2.5932729310000013, 2.4178872039999533, 2.8656973120000657]
 
     except KeyboardInterrupt: ...
     finally:

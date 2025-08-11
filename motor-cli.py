@@ -75,7 +75,7 @@ if __name__ == "__main__":
                 try:
                     radians = float(cmd[1]) if len(cmd) > 1 else math.pi
                     seconds = float(cmd[2]) if len(cmd) > 2 else 1
-                    start_frequency = int(cmd[3]) if len(cmd) > 3 else 100
+                    start_frequency = int(cmd[3]) if len(cmd) > 3 else 50
                 except ValueError:
                     print("Usage: rotacc [radians] [seconds] [start_frequency]")
                     continue
@@ -88,7 +88,7 @@ if __name__ == "__main__":
                 try:
                     radians = float(cmd[1]) if len(cmd) > 1 else math.pi
                     seconds = float(cmd[2]) if len(cmd) > 2 else 1
-                    start_frequency = int(cmd[3]) if len(cmd) > 3 else 100
+                    start_frequency = int(cmd[3]) if len(cmd) > 3 else 50
                 except ValueError:
                     print("Usage: rotdec [radians] [seconds] [start_frequency]")
                     continue
@@ -101,7 +101,7 @@ if __name__ == "__main__":
                 try:
                     radians = float(cmd[1]) if len(cmd) > 1 else math.pi
                     seconds = float(cmd[2]) if len(cmd) > 2 else 1
-                    start_frequency = int(cmd[3]) if len(cmd) > 3 else 100
+                    start_frequency = int(cmd[3]) if len(cmd) > 3 else 50
                 except ValueError:
                     print("Usage: rotacc2 [radians] [seconds] [start_frequency]")
                     continue
