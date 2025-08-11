@@ -120,7 +120,7 @@ def rotate_platform_deceleration(radians, duration=1, start_frequency=100):
 def rotate_platform2(radians, duration=1, start_frequency=100):
     """Rotate the platform by a specified angle in radians."""
     dur= duration/2
-    acceleration = INERTIA_PLATFORM2WHEEL_RATIO*radians/dur
+    acceleration = INERTIA_PLATFORM2WHEEL_RATIO*radians/dur/dur
     wait_times = [impulse/2 for impulse in accelerated_impulse_durations(acceleration, dur, 1/start_frequency)]
     negated_wait_times = [impulse/2 for impulse in accelerated_impulse_durations(-acceleration, dur, wait_times[-1]*2)]
     for wt in wait_times:
