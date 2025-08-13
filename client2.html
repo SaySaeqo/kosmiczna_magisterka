@@ -1,0 +1,142 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Stereo WebXR Viewer (Quest)</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1, user-scalable=no" />
+  <style>
+    html,body{height:100%;margin:0;background:#000;overflow:hidden}
+    #enter { position: absolute; z-index: 10; left: 16px; bottom: 16px; padding: 10px 14px; border-radius: 10px; border: 0; }
+    #hud   { position: absolute; z-index: 10; left: 16px; top: 16px; color:#fff; font: 14px/1.3 system-ui, sans-serif; }
+  </style>
+</head>
+<body>
+  <div id="hud">Waiting for WebRTC…</div>
+  <button id="enter">Enter VR</button>
+  <video id="v" playsinline autoplay muted style="display:none"></video>
+
+  <!-- Three.js r169 (layers L/R work as expected) -->
+  <script type="module">
+    import * as THREE from "https://unpkg.com/three@0.169.0/build/three.module.js";
+    import { VRButton } from "https://unpkg.com/three@0.169.0/examples/jsm/webxr/VRButton.js";
+
+    const hud = document.getElementById('hud');
+    const video = document.getElementById('v');
+
+    // --- 1) WebRTC: fetch SDP answer from your Python server (/offer) ---
+    async function connectWebRTC() {
+      const pc = new RTCPeerConnection();
+      pc.ontrack = ev => {
+        // attach the incoming stereo (side-by-side) track
+        video.srcObject = ev.streams[0];
+        video.play().catch(()=>{});
+      };
+
+      const offer = await pc.createOffer({ offerToReceiveVideo: true });
+      await pc.setLocalDescription(offer);
+
+      const resp = await fetch('/offer', {
+        method: 'POST',
+        headers: {'Content-Type':'application/json'},
+        body: JSON.stringify({ sdp: offer.sdp, type: offer.type })
+      });
+      const answer = await resp.json();
+      await pc.setRemoteDescription(answer);
+      hud.textContent = "WebRTC connected. Click “Enter VR”.";
+    }
+
+    // --- 2) Three.js / WebXR setup ---
+    const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.xr.enabled = true;
+    document.body.appendChild(renderer.domElement);
+    document.body.appendChild(VRButton.createButton(renderer));
+
+    const scene = new THREE.Scene();
+    const camera = new THREE.PerspectiveCamera(70, window.innerWidth / window.innerHeight, 0.05, 100);
+    camera.position.set(0, 1.6, 0); // eye height-ish
+
+    const light = new THREE.HemisphereLight(0xffffff, 0x222233, 1.0);
+    scene.add(light);
+
+    // A subtle backdrop so you’re not in total darkness
+    const room = new THREE.Mesh(
+      new THREE.BoxGeometry(10, 3, 10),
+      new THREE.MeshBasicMaterial({ color: 0x101014, side: THREE.BackSide })
+    );
+    scene.add(room);
+
+    // --- 3) Create a VideoTexture and two planes, one per eye ---
+    const videoTex = new THREE.VideoTexture(video);
+    videoTex.colorSpace = THREE.SRGBColorSpace;    // correct gamma
+    videoTex.minFilter = THREE.LinearFilter;
+    videoTex.magFilter = THREE.LinearFilter;
+
+    // Plane where we’ll show each eye’s half (meters in VR space)
+    const EYE_WIDTH_M = 2.0;    // apparent size; tweak for comfort
+    const EYE_HEIGHT_M = 1.125; // keep ~16:9 if your stereo is 2*16:9
+    const DIST_M = 2.5;         // distance in front of the user
+
+    function makeEyePlane(isLeft) {
+      const g = new THREE.PlaneGeometry(EYE_WIDTH_M, EYE_HEIGHT_M);
+      // Remap UVs to sample only left (x∈[0,0.5]) or right (x∈[0.5,1.0]) half
+      const uv = g.attributes.uv;
+      for (let i = 0; i < uv.count; i++) {
+        const u = uv.getX(i);
+        const v = uv.getY(i);
+        const uScaled = isLeft ? (u * 0.5) : (u * 0.5 + 0.5);
+        uv.setXY(i, uScaled, v);
+      }
+      uv.needsUpdate = true;
+
+      const m = new THREE.MeshBasicMaterial({ map: videoTex, toneMapped: false });
+      const mesh = new THREE.Mesh(g, m);
+      mesh.position.set(0, 1.6, -DIST_M);
+      // Assign to per-eye layer: 1=left, 2=right (per three.js XR)
+      mesh.layers.set(isLeft ? 1 : 2);
+      return mesh;
+    }
+
+    const quadLeft  = makeEyePlane(true);
+    const quadRight = makeEyePlane(false);
+    scene.add(quadLeft, quadRight);
+
+    // Let the non-XR preview (on the flat screen) show both (layer 0).
+    camera.layers.enableAll();
+
+    // Ensure the XR cameras respect layers 1 & 2 per eye (r169 behavior).
+    renderer.xr.addEventListener('sessionstart', () => {
+      const xrCam = renderer.xr.getCamera(); // THREE.ArrayCamera
+      // Left = cameras[0], Right = cameras[1]
+      if (xrCam.cameras && xrCam.cameras.length >= 2) {
+        xrCam.cameras[0].layers.enable(1); // left eye sees layer 1
+        xrCam.cameras[1].layers.enable(2); // right eye sees layer 2
+      }
+    });
+
+    // Basic animate loop
+    renderer.setAnimationLoop(() => {
+      renderer.render(scene, camera);
+    });
+
+    // Resize handling
+    window.addEventListener('resize', () => {
+      renderer.setSize(window.innerWidth, window.innerHeight);
+      camera.aspect = window.innerWidth / window.innerHeight;
+      camera.updateProjectionMatrix();
+    });
+
+    // Wire the “Enter VR” button to the built-in VRButton (for UX clarity)
+    document.getElementById('enter').addEventListener('click', () => {
+      const b = document.querySelector('button[aria-label="Enter VR"]');
+      if (b) b.click();
+    });
+
+    // Kick off signaling
+    connectWebRTC().catch(err => {
+      console.error(err);
+      hud.textContent = "WebRTC failed: " + err;
+    });
+  </script>
+</body>
+</html>

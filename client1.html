@@ -1,0 +1,110 @@
+<!-- client.html -->
+<!doctype html>
+<html>
+<head>
+  <meta charset="utf-8" />
+  <title>Stereo viewer (WebXR)</title>
+  <style>html,body{height:100%; margin:0; background:black;} canvas{display:none;}</style>
+</head>
+<body>
+  <video id="v" autoplay playsinline style="display:none;"></video>
+  <canvas id="left" width="1280" height="480"></canvas>
+  <canvas id="right" width="1280" height="480"></canvas>
+
+  <button id="enter">Enter VR</button>
+
+<script>
+(async () => {
+  const pc = new RTCPeerConnection();
+  const video = document.getElementById('v');
+
+  pc.ontrack = (ev) => {
+    // attach the incoming track to a hidden video element
+    video.srcObject = ev.streams[0];
+    video.play();
+  };
+
+  // create local offer
+  const offer = await pc.createOffer();
+  await pc.setLocalDescription(offer);
+
+  // send to Python server
+  const resp = await fetch('/offer', {
+    method: 'POST',
+    body: JSON.stringify({ sdp: offer.sdp, type: offer.type }),
+    headers: {'Content-Type':'application/json'}
+  });
+  const answer = await resp.json();
+  await pc.setRemoteDescription(answer);
+
+  // canvases for left and right eye cropped from side-by-side video
+  const leftCanvas = document.getElementById('left');
+  const rightCanvas = document.getElementById('right');
+  const lw = leftCanvas.width, lh = leftCanvas.height;
+  const ctxL = leftCanvas.getContext('2d');
+  const ctxR = rightCanvas.getContext('2d');
+
+  function updateCanvases(){
+    if(video.readyState >= 2){
+      // assume video is side-by-side: full width = 2*eyeWidth
+      const eyeW = video.videoWidth/2;
+      const eyeH = video.videoHeight;
+      // draw left half
+      ctxL.drawImage(video, 0, 0, eyeW, eyeH, 0, 0, lw, lh);
+      // draw right half
+      ctxR.drawImage(video, eyeW, 0, eyeW, eyeH, 0, 0, lw, lh);
+    }
+    requestAnimationFrame(updateCanvases);
+  }
+  updateCanvases();
+
+  // WebXR rendering: two layers, one per eye (simple approach using layers API if available)
+  document.getElementById('enter').addEventListener('click', async () => {
+    if (!navigator.xr) {
+      alert('WebXR not available in this browser');
+      return;
+    }
+    const xr = await navigator.xr.requestSession('immersive-vr', {requiredFeatures: []});
+    const glCanvas = document.createElement('canvas');
+    document.body.appendChild(glCanvas);
+    const gl = glCanvas.getContext('webgl', {xrCompatible:true});
+    await gl.makeXRCompatible();
+    const xrRefSpace = await xr.requestReferenceSpace('local');
+
+    // create WebGL textures from the canvases
+    const texL = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texL);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    const texR = gl.createTexture();
+    gl.bindTexture(gl.TEXTURE_2D, texR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+
+    // simple rectangle shader pipeline omitted for brevity — use layers or THREE.js for easier rendering
+    // Here we create a basic XR render loop and blit canvases into textures each frame.
+    const onFrame = (time, frame) => {
+      const session = frame.session;
+      const pose = frame.getViewerPose(xrRefSpace);
+      if (pose) {
+        // update textures from canvases
+        gl.bindTexture(gl.TEXTURE_2D, texL);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, leftCanvas);
+        gl.bindTexture(gl.TEXTURE_2D, texR);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, rightCanvas);
+
+        // You would now render a scene with two quads textured with texL and texR,
+        // one per eye, using the view/projection matrices from pose.views[i].
+        // For brevity, full GL shader code is omitted — use three.js WebXR examples
+        // (see immersive-web samples) to render textured quads easily.
+      }
+      session.requestAnimationFrame(onFrame);
+    };
+    xr.requestAnimationFrame(onFrame);
+  });
+
+})();
+</script>
+</body>
+</html>
