@@ -27,6 +27,20 @@
   // create local offer
   const offer = await pc.createOffer();
   await pc.setLocalDescription(offer);
+  let promise = new Promise((resolve) => {
+      if (pc.iceGatheringState === 'complete') {
+    resolve();
+      } else {
+    const checkState = () => {
+        if (pc.iceGatheringState === 'complete') {
+      pc.removeEventListener('icegatheringstatechange', checkState);
+      resolve();
+        }
+    };
+    pc.addEventListener('icegatheringstatechange', checkState);
+      }
+  });
+  await promise;
 
   // send to Python server
   const resp = await fetch('/offer', {

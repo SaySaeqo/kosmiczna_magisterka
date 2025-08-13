@@ -34,6 +34,20 @@
 
       const offer = await pc.createOffer({ offerToReceiveVideo: true });
       await pc.setLocalDescription(offer);
+      let promise = new Promise((resolve) => {
+          if (pc.iceGatheringState === 'complete') {
+              resolve();
+          } else {
+              const checkState = () => {
+                  if (pc.iceGatheringState === 'complete') {
+                      pc.removeEventListener('icegatheringstatechange', checkState);
+                      resolve();
+                  }
+              };
+              pc.addEventListener('icegatheringstatechange', checkState);
+          }
+      });
+      await promise;
 
       const resp = await fetch('/offer', {
         method: 'POST',
