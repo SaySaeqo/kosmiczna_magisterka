@@ -1,0 +1,86 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Stereo Layer Video Background</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1,user-scalable=no">
+  <style>
+    html,body{margin:0;height:100%;background:#000;overflow:hidden;}
+    button{position:absolute;bottom:20px;left:20px;z-index:10;padding:10px;}
+  </style>
+</head>
+<body>
+  <video id="v" autoplay playsinline muted style="display:none;"></video>
+  <button id="enter">Enter VR</button>
+  <div id="hud" style="position:absolute;top:20px;left:20px;color:white;z-index:10;">Loading...</div>
+
+<script type="module">
+import * as THREE from "https://unpkg.com/three@0.169.0/build/three.module.js";
+import { VRButton } from "https://unpkg.com/three@0.169.0/examples/jsm/webxr/VRButton.js";
+
+const video = document.getElementById('v');
+const hud = document.getElementById('hud');
+
+(async function init() {
+  const scene = new THREE.Scene();
+  const renderer = new THREE.WebGLRenderer({ antialias: true });
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  renderer.xr.enabled = true;
+  document.body.appendChild(renderer.domElement);
+  document.body.appendChild(VRButton.createButton(renderer));
+
+  const pc = new RTCPeerConnection();
+  pc.ontrack = ev => {
+    video.srcObject = ev.streams[0];
+    video.play();
+  };
+  const offer = await pc.createOffer({ offerToReceiveVideo: true });
+  await pc.setLocalDescription(offer);
+  let promise = new Promise((resolve) => {
+      if (pc.iceGatheringState === 'complete') {
+          resolve();
+      } else {
+          const checkState = () => {
+              if (pc.iceGatheringState === 'complete') {
+                  pc.removeEventListener('icegatheringstatechange', checkState);
+                  resolve();
+              }
+          };
+          pc.addEventListener('icegatheringstatechange', checkState);
+      }
+  });
+  await promise;
+  const resp = await fetch('/offer', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({ sdp: offer.sdp, type: offer.type })
+  });
+  const answer = await resp.json();
+  await pc.setRemoteDescription(answer);
+  hud.textContent = 'WebRTC connected';
+
+  // WebXR Layer Setup
+  const session = renderer.xr.getSession();
+  const refSpace = await session.requestReferenceSpace('viewer');  // head-locked
+
+  const mediaBinding = new XRMediaBinding(session);  
+  const layer = mediaBinding.createQuadLayer(video, {
+    space: refSpace,
+    layout: 'stereo-left-right',
+    width: 10,  // adjust size to fill FOV
+    height: 10
+  });
+  session.updateRenderState({ layers: [layer] });
+
+  renderer.setAnimationLoop(() => {
+    renderer.render(scene, new THREE.PerspectiveCamera());
+  });
+
+  document.getElementById('enter').addEventListener('click', () => {
+    document.querySelector('button[aria-label="Enter VR"]').click();
+  });
+
+})();
+</script>
+</body>
+</html>
