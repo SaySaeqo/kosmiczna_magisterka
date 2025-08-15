@@ -178,7 +178,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                         }
                     }
                 }
-                //xrSession.renderState.layers[0].transform = frame.getPose(xrRefSpace).transform;
+                let pose = frame.getViewerPose(xrRefSpace);
+                if (pose) {
+                    xrLayer.transform = pose.transform;
+                    session.updateRenderState({ layers: [xrLayer] });
+                }
             }
 
             await start();
