@@ -44,12 +44,21 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         color: white;
         z-index: 10;
     }
+    #errors {
+        position: absolute;
+        top: 60px;
+        left: 20px;
+        color: red;
+        z-index: 10;
+        background-color: aliceblue;
+    }
 </style>
 </head>
 
 <body>
     <button id="enter">Enter VR</button>
     <div id="hud">Loading…</div>
+    <div id="errors"></div>
     <main style='text-align: center;'>
     </main>
     <script src="https://immersive-web.github.io/webxr-layers-polyfill/build/webxr-layers-polyfill.js"></script>
@@ -82,6 +91,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             video.onerror = (event) => {
                 xrButton.disabled = true;
                 xrButton.textContent = 'Can\'t play video' + video.error.message;
+            };
+
+            window.onerror = (event) => {
+                let errors = document.getElementById('errors');
+                errors.textContent += event.message + '\n';
             };
 
             async function iceGatheringIsComplete(pc) {
@@ -193,7 +207,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 if (pose) {
                     session.updateRenderState({ layers: [getLayer(pose.transform)] });
                 }
-                
+
                 session.requestAnimationFrame(onXRFrame);
             }
 
