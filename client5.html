@@ -76,6 +76,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let xrRefSpace = null;
             let xrMediaFactory = null;
             let xrLayer = null;
+            let transform180 = new XRRigidTransform(
+                {x: 0, y: 0, z: 0, w:1},
+                {x: 0, y: 0, z: -1, w:0}
+            );
 
             let video = document.createElement('video');
             video.autoplay = true;
@@ -185,7 +189,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                 session.requestReferenceSpace('local').then((refSpace) => {
                     xrRefSpace = refSpace;
-                    session.updateRenderState({ layers: [getLayer(undefined)] });
+                    session.updateRenderState({ layers: [getLayer(transform180)] });
 
                     session.requestAnimationFrame(onXRFrame);
                 });
@@ -210,7 +214,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 let pose = frame.getViewerPose(xrRefSpace);
                 if (pose) {
                     //session.updateRenderState({ layers: [getLayer(pose.transform)] }); // works but slow and crashes
-                    xrSession.renderState.layers[0].transform = pose.transform;
+                    let matrix180 = new DOMMatrix().rotateAxisAngle(0, 0, 1, 180);
+                    let newTransform = new XRRigidTransform(
+                        {x: 0, y: 0, z: 0, w:1},
+                        pose.transform.orientation.matrixTransform(matrix180)
+                    );
+                    xrSession.renderState.layers[0].transform = newTransform;
+
                     fetch('/rotate', {
                         method: 'POST',
                         body: JSON.stringify({ transform: pose.transform.orientation.toJSON() }),
