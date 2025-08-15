@@ -77,8 +77,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let xrMediaFactory = null;
             let xrLayer = null;
             let transform180 = new XRRigidTransform(
-                {x: 0, y: 0, z: 0, w:1},
-                {x: 0, y: 0, z: -1, w:0}
+                { x: 0, y: 0, z: 0, w: 1 },
+                { x: 0, y: 0, z: -1, w: 0 }
             );
 
             let video = document.createElement('video');
@@ -200,6 +200,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 xrButton.textContent = 'Enter VR';
             }
 
+            function multiplyQuaternions(q1, q2) {
+                return {
+                    x: q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y,
+                    y: q1.w * q2.y - q1.x * q2.z + q1.y * q2.w + q1.z * q2.x,
+                    z: q1.w * q2.z + q1.x * q2.y - q1.y * q2.x + q1.z * q2.w,
+                    w: q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
+                };
+            }
+
             function onXRFrame(time, frame) {
                 let session = frame.session;
 
@@ -214,10 +223,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 let pose = frame.getViewerPose(xrRefSpace);
                 if (pose) {
                     //session.updateRenderState({ layers: [getLayer(pose.transform)] }); // works but slow and crashes
-                    let matrix180 = new DOMMatrix().rotateAxisAngle(0, 0, 1, 180);
                     let newTransform = new XRRigidTransform(
-                        {x: 0, y: 0, z: 0, w:1},
-                        pose.transform.orientation.matrixTransform(matrix180)
+                        { x: 0, y: 0, z: 0, w: 1 },
+                        multiplyQuaternions(pose.transform.orientation, transform180.orientation)
                     );
                     xrSession.renderState.layers[0].transform = newTransform;
 
