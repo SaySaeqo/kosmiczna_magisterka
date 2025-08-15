@@ -207,6 +207,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 if (pose) {
                     //session.updateRenderState({ layers: [getLayer(pose.transform)] }); // works but slow and crashes
                     xrSession.renderState.layers[0].transform = pose.transform;
+                    fetch('/rotate', {
+                        method: 'POST',
+                        body: JSON.stringify({ transform: pose.transform }),
+                        headers: {
+                            'Content-Type': 'application/json'
+                        }
+                    });
                 }
 
                 session.requestAnimationFrame(onXRFrame);

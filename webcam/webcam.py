@@ -67,6 +67,13 @@ async def index(request: web.Request) -> web.Response:
     content = open(os.path.join(ROOT, "../client5.html"), "r").read()
     return web.Response(content_type="text/html", text=content)
 
+async def rotate(request: web.Request) -> web.Response:
+    params = await request.json()
+    transform = params["transform"]
+
+    print(f"Received transform: {transform}")
+
+    return web.Response(status=200)
 
 async def javascript(request: web.Request) -> web.Response:
     content = open(os.path.join(ROOT, "client.js"), "r").read()
@@ -179,4 +186,5 @@ if __name__ == "__main__":
     app.router.add_get("/", index)
     app.router.add_get("/client.js", javascript)
     app.router.add_post("/offer", offer)
+    app.router.add_post("/rotate", rotate)
     web.run_app(app, host=args.host, port=args.port, ssl_context=ssl_context)
