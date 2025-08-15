@@ -212,12 +212,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             function onXRFrame(time, frame) {
                 let session = frame.session;
 
+                let button3 = false;
                 for (let source of session.inputSources) {
                     if (source.gamepad) {
                         if (buttonPressedThisFrame(source.gamepad, 4)) {
                             session.end();
                             return;
                         }
+                        button3 = buttonPressedThisFrame(source.gamepad, 3);
                     }
                 }
                 let pose = frame.getViewerPose(xrRefSpace);
