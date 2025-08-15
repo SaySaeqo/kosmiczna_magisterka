@@ -205,7 +205,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 }
                 let pose = frame.getViewerPose(xrRefSpace);
                 if (pose) {
-                    session.updateRenderState({ layers: [getLayer(pose.transform)] });
+                    //session.updateRenderState({ layers: [getLayer(pose.transform)] }); // works but slow and crashes
+                    //xrSession.renderState.layers[0].transform = pose.transform;
                 }
 
                 session.requestAnimationFrame(onXRFrame);
