@@ -84,26 +84,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             video.crossOrigin = "anonymous";
             let hud = document.getElementById('hud');
 
-            let canvas = document.createElement('canvas');
-            let ctx = canvas.getContext('2d');
-            let sourceVideo = document.createElement('video');
-            sourceVideo.autoplay = true;
-            sourceVideo.playsinline = true;
-            sourceVideo.muted = true;
-            sourceVideo.crossOrigin = "anonymous";
-
-            function rotateVideoFrame() {
-                canvas.width = sourceVideo.videoWidth;
-                canvas.height = sourceVideo.videoHeight;
-
-                ctx.save();
-                ctx.translate(canvas.width / 2, canvas.height / 2);
-                ctx.rotate(Math.PI); // 180 degrees rotation
-                ctx.drawImage(sourceVideo, -canvas.width / 2, -canvas.height / 2);
-                ctx.restore();
-                requestAnimationFrame(rotateVideoFrame);
-            }
-
             function buttonPressedThisFrame(gamepad, index) {
                 return (index < gamepad.buttons.length &&
                     gamepad.buttons[index].pressed);
@@ -138,15 +118,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             async function start() {
                 const pc = new RTCPeerConnection();
                 pc.ontrack = ev => {
-                    sourceVideo.srcObject = ev.streams[0];
-                    sourceVideo.play();
-
-                    canvas.width = sourceVideo.videoWidth;
-                    canvas.height = sourceVideo.videoHeight;
-                    rotateVideoFrame();
-
-                    // Use the canvas as the video source for WebXR
-                    video.srcObject = canvas.captureStream(10); // 10 FPS
+                    video.srcObject = ev.streams[0];
                     video.play();
                 };
                 const offer = await pc.createOffer({ offerToReceiveVideo: true });
