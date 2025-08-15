@@ -77,8 +77,7 @@ async def index(request: web.Request) -> web.Response:
 async def rotate(request: web.Request) -> web.Response:
     params = await request.json()
     transform = params["transform"]
-
-    print(f"Received transform: {transform}")
+    transform = [transform["x"], transform["y"], transform["z"], transform["w"]]
 
     return web.Response(status=200)
 
