@@ -43,8 +43,7 @@ def create_local_tracks(
             "video_size": "1280x480",
             "input_format": "yuv420p",
             "thread_queue_size": "1024",
-            "c:v": "h264_v4l2m2m",
-            "vf": "transpose=2,transpose=2"
+            "c:v": "h264_v4l2m2m"
         }
         if relay is None:
             if platform.system() == "Darwin":

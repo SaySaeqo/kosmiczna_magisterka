@@ -44,6 +44,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         color: white;
         z-index: 10;
     }
+
     #errors {
         position: absolute;
         top: 60px;
@@ -83,6 +84,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             video.crossOrigin = "anonymous";
             let hud = document.getElementById('hud');
 
+            let canvas = document.createElement('canvas');
+            let ctx = canvas.getContext('2d');
+            let sourceVideo = document.createElement('video');
+            sourceVideo.autoplay = true;
+            sourceVideo.playsinline = true;
+            sourceVideo.muted = true;
+            sourceVideo.crossOrigin = "anonymous";
+
+            function rotateVideoFrame() {
+                if (sourceVideo.readyState >= 2) {
+                    canvas.width = sourceVideo.videoWidth;
+                    canvas.height = sourceVideo.videoHeight;
+
+                    ctx.save();
+                    ctx.translate(canvas.width / 2, canvas.height / 2);
+                    ctx.rotate(Math.PI); // 180 degrees rotation
+                    ctx.drawImage(sourceVideo, -canvas.width / 2, -canvas.height / 2);
+                    ctx.restore();
+                }
+                requestAnimationFrame(rotateVideoFrame);
+            }
+
             function buttonPressedThisFrame(gamepad, index) {
                 return (index < gamepad.buttons.length &&
                     gamepad.buttons[index].pressed);
@@ -103,22 +126,33 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     if (pc.iceGatheringState === 'complete') {
                         resolve();
                     } else {
-                    const checkState = () => {
-                        if (pc.iceGatheringState === 'complete') {
-                            pc.removeEventListener('icegatheringstatechange', checkState);
-                            resolve();
-                        }
-                    };
-                    pc.addEventListener('icegatheringstatechange', checkState);
+                        const checkState = () => {
+                            if (pc.iceGatheringState === 'complete') {
+                                pc.removeEventListener('icegatheringstatechange', checkState);
+                                resolve();
+                            }
+                        };
+                        pc.addEventListener('icegatheringstatechange', checkState);
                     }
                 });
             }
 
             async function start() {
                 const pc = new RTCPeerConnection();
-                pc.ontrack = ev => { 
-                    video.srcObject = ev.streams[0];
-                    video.play(); 
+                pc.ontrack = ev => {
+                    sourceVideo.srcObject = ev.streams[0];
+                    sourceVideo.play();
+
+                    // Start rotating the video frames
+                    sourceVideo.addEventListener('loadedmetadata', () => {
+                        canvas.width = sourceVideo.videoWidth;
+                        canvas.height = sourceVideo.videoHeight;
+                        rotateVideoFrame();
+
+                        // Use the canvas as the video source for WebXR
+                        video.srcObject = canvas.captureStream(10); // 10 FPS
+                        video.play();
+                    });
                 };
                 const offer = await pc.createOffer({ offerToReceiveVideo: true });
                 await pc.setLocalDescription(offer);
@@ -197,7 +231,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
             function onXRFrame(time, frame) {
                 let session = frame.session;
-                
+
                 for (let source of session.inputSources) {
                     if (source.gamepad) {
                         if (buttonPressedThisFrame(source.gamepad, 4)) {
