@@ -93,16 +93,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             sourceVideo.crossOrigin = "anonymous";
 
             function rotateVideoFrame() {
-                if (sourceVideo.readyState >= 2) {
-                    canvas.width = sourceVideo.videoWidth;
-                    canvas.height = sourceVideo.videoHeight;
+                canvas.width = sourceVideo.videoWidth;
+                canvas.height = sourceVideo.videoHeight;
 
-                    ctx.save();
-                    ctx.translate(canvas.width / 2, canvas.height / 2);
-                    ctx.rotate(Math.PI); // 180 degrees rotation
-                    ctx.drawImage(sourceVideo, -canvas.width / 2, -canvas.height / 2);
-                    ctx.restore();
-                }
+                ctx.save();
+                ctx.translate(canvas.width / 2, canvas.height / 2);
+                ctx.rotate(Math.PI); // 180 degrees rotation
+                ctx.drawImage(sourceVideo, -canvas.width / 2, -canvas.height / 2);
+                ctx.restore();
                 requestAnimationFrame(rotateVideoFrame);
             }
 
@@ -143,16 +141,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     sourceVideo.srcObject = ev.streams[0];
                     sourceVideo.play();
 
-                    // Start rotating the video frames
-                    sourceVideo.addEventListener('loadedmetadata', () => {
-                        canvas.width = sourceVideo.videoWidth;
-                        canvas.height = sourceVideo.videoHeight;
-                        rotateVideoFrame();
+                    canvas.width = sourceVideo.videoWidth;
+                    canvas.height = sourceVideo.videoHeight;
+                    rotateVideoFrame();
 
-                        // Use the canvas as the video source for WebXR
-                        video.srcObject = canvas.captureStream(10); // 10 FPS
-                        video.play();
-                    });
+                    // Use the canvas as the video source for WebXR
+                    video.srcObject = canvas.captureStream(10); // 10 FPS
+                    video.play();
                 };
                 const offer = await pc.createOffer({ offerToReceiveVideo: true });
                 await pc.setLocalDescription(offer);
