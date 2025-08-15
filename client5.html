@@ -134,6 +134,28 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 }
             }
 
+            function getLayer(transform) {
+                let angle = 130 * 2 * Math.PI / 360; // 130 degrees in radians
+                let layout = "stereo-left-right";
+                if (transform === undefined) {
+                    return xrMediaFactory.createEquirectLayer(video, {
+                        space: xrRefSpace,
+                        centralHorizontalAngle: angle,
+                        layout: layout,
+                        lowerVerticalAngle: -1.1,
+                        upperVerticalAngle: 1.1
+                    });
+                } else {
+                    return xrMediaFactory.createEquirectLayer(video, {
+                        space: xrRefSpace,
+                        centralHorizontalAngle: angle,
+                        layout: layout,
+                        lowerVerticalAngle: -1.1,
+                        upperVerticalAngle: 1.1,
+                        transform: transform
+                    });
+                }
+            }
 
             function onSessionStarted(session) {
                 xrSession = session;
@@ -145,18 +167,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                 session.requestReferenceSpace('local').then((refSpace) => {
                     xrRefSpace = refSpace;
-
-                    let angle = 130 * 2 * Math.PI / 360; // 130 degrees in radians
-                    let layout = "stereo-left-right";
-                    let layer = xrMediaFactory.createEquirectLayer(video, {
-                        space: refSpace, 
-                        centralHorizontalAngle: angle, 
-                        layout: layout,
-                        lowerVerticalAngle: -1.1,
-                        upperVerticalAngle: 1.1
-                    });
-                    xrLayer = layer;
-                    session.updateRenderState({ layers: [layer] });
+                    session.updateRenderState({ layers: [getLayer(undefined)] });
 
                     session.requestAnimationFrame(onXRFrame);
                 });
@@ -180,8 +191,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 }
                 let pose = frame.getViewerPose(xrRefSpace);
                 if (pose) {
-                    xrLayer.transform = pose.transform;
-                    session.updateRenderState({ layers: [xrLayer] });
+                    session.updateRenderState({ layers: [getLayer(pose.transform)] });
                 }
             }
 
