@@ -65,7 +65,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let xrSession = null;
             let xrRefSpace = null;
             let xrMediaFactory = null;
-            let cylinder_layer = false;
             let xrLayer = null;
 
             let video = document.createElement('video');
@@ -156,8 +155,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                         lowerVerticalAngle: -1.1,
                         upperVerticalAngle: 1.1
                     });
-                    // xrLayer = layer;
-                    // let layer = xrMediaFactory.createEquirectLayer(video, {space: refSpace});
+                    xrLayer = layer;
                     session.updateRenderState({ layers: [layer] });
 
                     session.requestAnimationFrame(onXRFrame);
@@ -176,7 +174,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 for (let source of session.inputSources) {
                     if (source.gamepad) {
                         if (buttonPressedThisFrame(source.gamepad, 4)) {
-                            //session.end();
+                            session.end();
                         }
                     }
                 }
