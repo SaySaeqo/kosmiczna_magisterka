@@ -116,7 +116,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
             async function start() {
                 const pc = new RTCPeerConnection();
-                pc.ontrack = ev => { video.srcObject = ev.streams[0]; video.play(); };
+                pc.ontrack = ev => { 
+                    video.srcObject = ev.streams[0];
+                    video.style.transform = 'rotate(180deg)';
+                    video.play(); 
+                };
                 const offer = await pc.createOffer({ offerToReceiveVideo: true });
                 await pc.setLocalDescription(offer);
                 await iceGatheringIsComplete(pc);
