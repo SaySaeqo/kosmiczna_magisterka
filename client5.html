@@ -154,12 +154,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                         centralHorizontalAngle: angle, 
                         layout: layout,
                         lowerVerticalAngle: -1.1,
-                        upperVerticalAngle: 1.1,
-                        transform: new XRRigidTransform({orientation: { x: 0, y: 0, z: 0, w: 1 } })
+                        upperVerticalAngle: 1.1
                     });
-                    xrLayer = layer;
+                    // xrLayer = layer;
                     // let layer = xrMediaFactory.createEquirectLayer(video, {space: refSpace});
-                    session.updateRenderState({ baseLayer: layer });
+                    session.updateRenderState({ layers: [layer] });
 
                     session.requestAnimationFrame(onXRFrame);
                 });
@@ -172,10 +171,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
             function onXRFrame(time, frame) {
                 let session = frame.session;
-                let pose = frame.getPose(xrRefSpace);
-                xrLayer.transform = pose.transform;
-                session.updateRenderState({ layers: [xrLayer] });
                 session.requestAnimationFrame(onXRFrame);
+
+                for (let source of session.inputSources) {
+                    if (source.gamepad) {
+                        if (buttonPressedThisFrame(source.gamepad, 4)) {
+                            //session.end();
+                        }
+                    }
+                }
+                //xrSession.renderState.layers[0].transform = frame.getPose(xrRefSpace).transform;
             }
 
             await start();
