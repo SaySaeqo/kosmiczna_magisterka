@@ -66,6 +66,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let xrRefSpace = null;
             let xrMediaFactory = null;
             let cylinder_layer = false;
+            let xrLayer = null;
 
             let video = document.createElement('video');
             video.autoplay = true;
@@ -85,17 +86,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             };
 
             async function iceGatheringIsComplete(pc) {
-                if (pc.iceGatheringState !== 'complete') {
-                    await new Promise((resolve) => {
-                        const checkState = () => {
-                            if (pc.iceGatheringState === 'complete') {
-                                pc.removeEventListener('icegatheringstatechange', checkState);
-                                resolve();
-                            }
-                        };
-                        pc.addEventListener('icegatheringstatechange', checkState);
-                    });
-                }
+                await new Promise((resolve) => {
+                    if (pc.iceGatheringState === 'complete') {
+                        resolve();
+                    } else {
+                    const checkState = () => {
+                        if (pc.iceGatheringState === 'complete') {
+                            pc.removeEventListener('icegatheringstatechange', checkState);
+                            resolve();
+                        }
+                    };
+                    pc.addEventListener('icegatheringstatechange', checkState);
+                    }
+                });
             }
 
             async function start() {
@@ -110,14 +113,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 hud.textContent = "WebRTC connected";
             }
 
-            // Checks to see if WebXR is available and, if so, requests an XRDevice
-            // that is connected to the system and tests it to ensure it supports the
-            // desired session options.
             function initXR() {
-                // Is WebXR available on this UA?
                 if (navigator.xr) {
-                    // If the device allows creation of exclusive sessions set it as the
-                    // target of the 'Enter XR' button.
                     navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
                         if (supported) {
                             xrButton.addEventListener('click', onButtonClicked);
@@ -129,8 +126,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 }
             }
 
-            // Called when the user clicks the button to enter XR. If we don't have a
-            // session we'll request one, and if we do have a session we'll end it.
+
             function onButtonClicked() {
                 if (!xrSession) {
                     navigator.xr.requestSession('immersive-vr', { requiredFeatures: ['layers'] }).then(onSessionStarted);
@@ -139,14 +135,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 }
             }
 
-            // Called when we've successfully acquired a XRSession. In response we
-            // will set up the necessary session state and kick off the frame loop.
+
             function onSessionStarted(session) {
                 xrSession = session;
                 xrButton.textContent = 'Exit VR';
 
-                // Listen for the sessions 'end' event so we can respond if the user
-                // or UA ends the session for any reason.
                 session.addEventListener('end', onSessionEnded);
 
                 xrMediaFactory = new XRMediaBinding(session);
@@ -154,48 +147,39 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 session.requestReferenceSpace('local').then((refSpace) => {
                     xrRefSpace = refSpace;
 
-                    let angle = 130*2*Math.PI/360; // 130 degrees in radians
-
+                    let angle = 130 * 2 * Math.PI / 360; // 130 degrees in radians
                     let layout = "stereo-left-right";
-
-                    let layer = xrMediaFactory.createEquirectLayer(video, { space: refSpace, centralHorizontalAngle: angle, layout: layout });
+                    let layer = xrMediaFactory.createEquirectLayer(video, {
+                        space: refSpace, 
+                        centralHorizontalAngle: angle, 
+                        layout: layout,
+                        lowerVerticalAngle: -1.1,
+                        upperVerticalAngle: 1.1,
+                        transform: new XRRigidTransform({orientation: { x: 0, y: 0, z: 0, w: 1 } })
+                    });
+                    xrLayer = layer;
                     // let layer = xrMediaFactory.createEquirectLayer(video, {space: refSpace});
-                    session.updateRenderState({ layers: [layer] });
+                    session.updateRenderState({ baseLayer: layer });
 
-                    // Inform the session that we're ready to begin drawing.
                     session.requestAnimationFrame(onXRFrame);
                 });
             }
 
-            // Called either when the user has explicitly ended the session by calling
-            // session.end() or when the UA has ended the session for any reason.
-            // At this point the session object is no longer usable and should be
-            // discarded.
             function onSessionEnded(event) {
                 xrSession = null;
                 xrButton.textContent = 'Enter VR';
             }
 
-            // Called every time the XRSession requests that a new frame be drawn.
             function onXRFrame(time, frame) {
                 let session = frame.session;
-
-                // Inform the session that we're ready for the next frame.
+                let pose = frame.getPose(xrRefSpace);
+                xrLayer.transform = pose.transform;
+                session.updateRenderState({ layers: [xrLayer] });
                 session.requestAnimationFrame(onXRFrame);
-
-                let force_mono = false;
-                for (let source of session.inputSources) {
-                    if (source.gamepad) {
-                        force_mono |= buttonPressedThisFrame(source.gamepad, 4);
-                    }
-                }
-                xrSession.renderState.layers[0].forceMonoPresentation = force_mono;
             }
 
-            // Start the XR application.
             await start();
             initXR();
-
         })();
     </script>
 </body>
