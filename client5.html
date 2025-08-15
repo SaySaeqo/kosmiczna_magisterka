@@ -180,12 +180,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
             function onXRFrame(time, frame) {
                 let session = frame.session;
-                session.requestAnimationFrame(onXRFrame);
-
+                
                 for (let source of session.inputSources) {
                     if (source.gamepad) {
                         if (buttonPressedThisFrame(source.gamepad, 4)) {
                             session.end();
+                            return;
                         }
                     }
                 }
@@ -193,6 +193,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 if (pose) {
                     session.updateRenderState({ layers: [getLayer(pose.transform)] });
                 }
+                
+                session.requestAnimationFrame(onXRFrame);
             }
 
             await start();
