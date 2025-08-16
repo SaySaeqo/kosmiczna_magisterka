@@ -80,6 +80,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 { x: 0, y: 0, z: 0, w: 1 },
                 { x: 0, y: 0, z: -1, w: 0 }
             );
+            let lastPoseOrientation = null;
+            let sendRotationInterval = null;
 
             let video = document.createElement('video');
             video.autoplay = true;
@@ -179,6 +181,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 }
             }
 
+            function quatToEuler(quat) {
+                const q0 = quat[0];
+                const q1 = quat[1];
+                const q2 = quat[2];
+                const q3 = quat[3];
+                const Rx = Math.atan2(2 * (q0 * q1 + q2 * q3), 1 - (2 * (q1 * q1 + q2 * q2)));
+                const Ry = Math.asin(2 * (q0 * q2 - q3 * q1));
+                const Rz = Math.atan2(2 * (q0 * q3 + q1 * q2), 1 - (2 * (q2 * q2 + q3 * q3)));
+                const euler = [Rx, Ry, Rz];
+                return euler;
+
+            };
+
             function onSessionStarted(session) {
                 xrSession = session;
                 xrButton.textContent = 'Exit VR';
@@ -193,11 +208,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                     session.requestAnimationFrame(onXRFrame);
                 });
+
+                sendRotationInterval = setInterval(() => {
+                    if (lastPoseOrientation) {
+                        fetch('/rotate', {
+                            method: 'POST',
+                            body: JSON.stringify({ rotation: quatToEuler(lastPoseOrientation) }),
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                    }
+                }, 100);
             }
 
             function onSessionEnded(event) {
                 xrSession = null;
                 xrButton.textContent = 'Enter VR';
+                clearInterval(sendRotationInterval);
+                sendRotationInterval = null;
             }
 
             function multiplyQuaternions(q1, q2) {
@@ -208,19 +237,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     w: q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
                 };
             }
-
-            function quatToEuler(quat) {
-                const q0 = quat[0];
-                const q1 = quat[1];
-                const q2 = quat[2];
-                const q3 = quat[3];
-                const Rx = Math.atan2(2 * (q0 * q1 + q2 * q3), 1 - (2 * (q1 * q1 + q2 * q2)));
-                const Ry = Math.asin(2 * (q0 * q2 - q3 * q1));
-                const Rz = Math.atan2(2 * (q0 * q3 + q1 * q2), 1 - (2 * (q2 * q2 + q3 * q3)));
-                const euler = [Rx, Ry, Rz];
-                return euler;
-
-            };
 
             function onXRFrame(time, frame) {
                 let session = frame.session;
@@ -243,14 +259,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                         multiplyQuaternions(pose.transform.orientation, transform180.orientation)
                     );
                     xrSession.renderState.layers[0].transform = newTransform;
-
-                    fetch('/rotate', {
-                        method: 'POST',
-                        body: JSON.stringify({ rotation: quatToEuler(pose.transform.orientation) }),
-                        headers: {
-                            'Content-Type': 'application/json'
-                        }
-                    });
+                    lastPoseOrientation = pose.transform.orientation;
                 }
 
                 session.requestAnimationFrame(onXRFrame);
