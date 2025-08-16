@@ -98,7 +98,9 @@ async def rotate(request: web.Request) -> web.Response:
     else:
         motor.GPIO.output(motor.PINS["DIR"], motor.GPIO.LOW)
     angle = abs(angle)
+    motor.GPIO.output(motor.PINS["EN"], motor.GPIO.LOW)  # Enable the motor
     motor.rotate_platform2(angle, duration=1, start_frequency=30)
+    motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the motor
 
     return web.Response(status=200)
 
@@ -214,4 +216,8 @@ if __name__ == "__main__":
     app.router.add_get("/client.js", javascript)
     app.router.add_post("/offer", offer)
     app.router.add_post("/rotate", rotate)
+
+    motor.setup()
+    motor.reset()
+
     web.run_app(app, host=args.host, port=args.port, ssl_context=ssl_context)
