@@ -77,22 +77,52 @@ async def index(request: web.Request) -> web.Response:
     content = open(os.path.join(ROOT, "../client5.html"), "r").read()
     return web.Response(content_type="text/html", text=content)
 
-current_rot = 0.0
+def _clamp(v, lo=-1.0, hi=1.0):
+    return hi if v > hi else lo if v < lo else v
+
+def y_axis_rotation(q: dict) -> float:
+    """
+    Extract rotation about the Y axis (radians) from unit quaternion q={x,y,z,w}.
+    Uses Tait-Bryan intrinsic X (roll), Y (pitch), Z (yaw) convention.
+    Returns value in [-pi/2, pi/2].
+    """
+    x, y, z, w = q["x"], q["y"], q["z"], q["w"]
+    s = 2.0 * (w * y - z * x)
+    return math.asin(_clamp(s))
+
+def relative_y_axis_rotation(q_from: dict, q_to: dict) -> float:
+    """
+    Rotation about Y to go from q_from to q_to.
+    """
+    # conjugate of q_from (unit quaternion inverse)
+    cf = { "x": -q_from["x"], "y": -q_from["y"], "z": -q_from["z"], "w": q_from["w"] }
+    # quaternion multiply q_to * cf
+    q = {
+        "x": q_to["w"]*cf["x"] + q_to["x"]*cf["w"] + q_to["y"]*cf["z"] - q_to["z"]*cf["y"],
+        "y": q_to["w"]*cf["y"] - q_to["x"]*cf["z"] + q_to["y"]*cf["w"] + q_to["z"]*cf["x"],
+        "z": q_to["w"]*cf["z"] + q_to["x"]*cf["y"] - q_to["y"]*cf["x"] + q_to["z"]*cf["w"],
+        "w": q_to["w"]*cf["w"] - q_to["x"]*cf["x"] - q_to["y"]*cf["y"] - q_to["z"]*cf["z"],
+    }
+    return y_axis_rotation(q)
+
+current_orientation = { "x": 0, "y": 0, "z": 0, "w": 1 }
 last_rot_time = time.perf_counter()
+
+
 
 async def rotate(request: web.Request) -> web.Response:
     params = await request.json()
-    rotation = params["rotation"]
-    yaw = float(rotation[1])
-    global current_rot, last_rot_time
+    orientation = params["orientation"]
+    global current_orientation, last_rot_time
     now = time.perf_counter()
     if now - last_rot_time < 1.0:  # Prevent too frequent updates
         return web.Response(status=200)
     else:
         last_rot_time = now
-    angle = yaw - current_rot
-    print(f"{current_rot=} {yaw=} {angle=} abs={abs(angle)}")
-    current_rot = yaw
+
+    angle = relative_y_axis_rotation(current_orientation, orientation)
+    print(f"{current_orientation=} {orientation=} {angle=}")
+    current_orientation = orientation
     if disable_motor:
         return web.Response(status=200)
     if angle == 0:

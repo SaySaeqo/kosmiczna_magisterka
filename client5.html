@@ -214,7 +214,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     if (lastPoseOrientation && button4Pressed) {
                         fetch('/rotate', {
                             method: 'POST',
-                            body: JSON.stringify({ rotation: quatToEuler(lastPoseOrientation) }),
+                            body: JSON.stringify({ orientation: lastPoseOrientation.toJSON() }),
                             headers: {
                                 'Content-Type': 'application/json'
                             }
