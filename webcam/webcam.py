@@ -81,14 +81,8 @@ def _clamp(v, lo=-1.0, hi=1.0):
     return hi if v > hi else lo if v < lo else v
 
 def y_axis_rotation(q: dict) -> float:
-    """
-    Extract rotation about the Y axis (radians) from unit quaternion q={x,y,z,w}.
-    Uses Tait-Bryan intrinsic X (roll), Y (pitch), Z (yaw) convention.
-    Returns value in [-pi/2, pi/2].
-    """
     x, y, z, w = q["x"], q["y"], q["z"], q["w"]
-    s = 2.0 * (w * y - z * x)
-    return math.asin(_clamp(s))
+    return math.atan2(2*(w*y + x*z), 1 - 2*(y*y + z*z))
 
 def relative_y_axis_rotation(q_from: dict, q_to: dict) -> float:
     """
