@@ -121,7 +121,7 @@ async def rotate(request: web.Request) -> web.Response:
         return web.Response(status=200)
     if angle == 0:
         return web.Response(status=200)
-    if angle < 0:
+    if angle > 0:
         motor.GPIO.output(motor.PINS["DIR"], motor.GPIO.LOW)
     else:
         motor.GPIO.output(motor.PINS["DIR"], motor.GPIO.HIGH)
