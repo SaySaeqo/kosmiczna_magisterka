@@ -82,6 +82,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             );
             let lastPoseOrientation = null;
             let sendRotationInterval = null;
+            let button4Pressed = false;
 
             let video = document.createElement('video');
             video.autoplay = true;
@@ -210,7 +211,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 });
 
                 sendRotationInterval = setInterval(() => {
-                    if (lastPoseOrientation) {
+                    if (lastPoseOrientation && button4Pressed) {
                         fetch('/rotate', {
                             method: 'POST',
                             body: JSON.stringify({ rotation: quatToEuler(lastPoseOrientation) }),
@@ -241,14 +242,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             function onXRFrame(time, frame) {
                 let session = frame.session;
 
-                let button3 = false;
                 for (let source of session.inputSources) {
                     if (source.gamepad) {
-                        if (buttonPressedThisFrame(source.gamepad, 4)) {
-                            session.end();
-                            return;
-                        }
-                        button3 = buttonPressedThisFrame(source.gamepad, 3);
+                        button4Pressed = buttonPressedThisFrame(source.gamepad, 4);
                     }
                 }
                 let pose = frame.getViewerPose(xrRefSpace);
