@@ -255,7 +255,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                         multiplyQuaternions(pose.transform.orientation, transform180.orientation)
                     );
                     xrSession.renderState.layers[0].transform = newTransform;
-                    lastPoseOrientation = pose.transform.orientation;
+                    lastPoseOrientation = newTransform.orientation;
                 }
 
                 session.requestAnimationFrame(onXRFrame);
