@@ -6,6 +6,9 @@ import os
 import platform
 import ssl
 from typing import Optional
+import math
+import time
+import motor
 
 from aiohttp import web
 from aiortc import (
@@ -73,10 +76,29 @@ async def index(request: web.Request) -> web.Response:
     content = open(os.path.join(ROOT, "../client5.html"), "r").read()
     return web.Response(content_type="text/html", text=content)
 
+current_rot = 0.0
+last_rot_time = time.perf_counter()
+
 async def rotate(request: web.Request) -> web.Response:
     params = await request.json()
     rotation = params["rotation"]
-    print(f"Rotation received: {rotation}")
+    yaw = float(rotation[1])
+    global current_rot, last_rot_time
+    now = time.perf_counter()
+    if now - last_rot_time < 1.0:  # Prevent too frequent updates
+        return web.Response(status=200)
+    else:
+        last_rot_time = now
+    angle = yaw - current_rot
+    current_rot = yaw
+    if angle == 0:
+        return web.Response(status=200)
+    if angle < 0:
+        motor.GPIO.output(motor.PINS["DIR"], motor.GPIO.HIGH)
+    else:
+        motor.GPIO.output(motor.PINS["DIR"], motor.GPIO.LOW)
+    angle = abs(angle)
+    motor.rotate_platform2(angle, duration=1, start_frequency=30)
 
     return web.Response(status=200)
 
