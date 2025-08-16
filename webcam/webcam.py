@@ -24,6 +24,7 @@ ROOT = os.path.dirname(__file__)
 pcs = set()
 relay = None
 webcam = None
+disable_motor = True
 
 
 def create_local_tracks(
@@ -90,7 +91,10 @@ async def rotate(request: web.Request) -> web.Response:
     else:
         last_rot_time = now
     angle = yaw - current_rot
+    print(f"{current_rot=} {yaw=} {angle=} abs={abs(angle)}")
     current_rot = yaw
+    if disable_motor:
+        return web.Response(status=200)
     if angle == 0:
         return web.Response(status=200)
     if angle < 0:
@@ -192,6 +196,9 @@ if __name__ == "__main__":
     parser.add_argument(
         "--video-codec", help="Force a specific video codec (e.g. video/H264)"
     )
+    parser.add_argument(
+        "--disable-motor", action="store_true", help="Disable motor control"
+    )
 
     args = parser.parse_args()
 
@@ -217,7 +224,9 @@ if __name__ == "__main__":
     app.router.add_post("/offer", offer)
     app.router.add_post("/rotate", rotate)
 
-    motor.setup()
-    motor.reset()
+    if not args.disable_motor:
+        motor.setup()
+        motor.reset()
+        disable_motor = args.disable_motor
 
     web.run_app(app, host=args.host, port=args.port, ssl_context=ssl_context)
