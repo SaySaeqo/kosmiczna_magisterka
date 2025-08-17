@@ -144,7 +144,7 @@ def rotate_platform3(radians, duration=1):
     Uses M1-M3 pins to halve the step count for smoother transitions at the start and end.
     """
     dur = duration / 2
-    acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * radians / dur / dur
+    acceleration = INERTIA_PLATFORM2WHEEL_RATIO * radians / dur / dur
     impulses = accelerated_impulse_durations(acceleration, dur, MAX_IMPULSE_DURATION)
     up_to_200hz_impulses = [wt for wt in impulses if wt > 1/200]
     up_to_200hz_wait_times = [impulse/2 for impulse in up_to_200hz_impulses]
@@ -193,6 +193,10 @@ def rotate_platform3(radians, duration=1):
             sleep(wt)
             GPIO.output(PINS["STEP"], GPIO.LOW)
             sleep(wt)
+    # Reset M1-M3 pins
+    GPIO.output(PINS["M1"], GPIO.LOW)
+    GPIO.output(PINS["M2"], GPIO.LOW)
+    GPIO.output(PINS["M3"], GPIO.LOW)
 
 if __name__ == "__main__":
     setup()

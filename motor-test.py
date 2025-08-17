@@ -64,4 +64,20 @@ def test_frequency_grow_over_time():
     plt.grid()
     plt.show()
 
-test_frequency_grow_over_time()
+def test_rotate_platform3_calculations():
+    """Test the rotate_platform3 function."""
+    duration = 1
+    radians = math.pi
+
+    dur = duration / 2
+    acceleration = motor.INERTIA_PLATFORM2WHEEL_RATIO * radians / dur / dur
+    impulses = motor.accelerated_impulse_durations(acceleration, dur, motor.MAX_IMPULSE_DURATION)
+    up_to_200hz_impulses = [wt for wt in impulses if wt > 1/200]
+    up_to_200hz_wait_times = [impulse/2 for impulse in up_to_200hz_impulses]
+    up_to_200hz_total_time = sum(up_to_200hz_impulses)
+    dur -= up_to_200hz_total_time * 4
+    wait_times = [impulse/2 for impulse in motor.accelerated_impulse_durations(acceleration, dur, motor.MAX_IMPULSE_DURATION)]
+    negated_wait_times = [impulse/2 for impulse in motor.accelerated_impulse_durations(-acceleration, dur, wait_times[-1]*2)]
+    down_to_100hz_wait_times = [wt for wt in negated_wait_times if wt > 1/400]
+
+test_rotate_platform3_calculations()
