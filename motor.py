@@ -8,6 +8,8 @@ from functools import cache
 FULL_ROTATION = 200
 ROTATION_PER_STEP = 2*math.pi / FULL_ROTATION
 INERTIA_PLATFORM2WHEEL_RATIO = 4.92
+MIN_FREQUENCY = 100
+MAX_IMPULSE_DURATION = 1/MIN_FREQUENCY
 
 NOT_ASSIGNED = 26
 PINS = {
@@ -136,6 +138,61 @@ def rotate_platform2(radians, duration=1, start_frequency=50):
         GPIO.output(PINS["STEP"], GPIO.LOW)
         sleep(wt)
 
+def rotate_platform3(radians, duration=1):
+    """
+    Rotate the platform by a specified angle (radians) with acceleration and deceleration.
+    Uses M1-M3 pins to halve the step count for smoother transitions at the start and end.
+    """
+    dur = duration / 2
+    acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * radians / dur / dur
+    impulses = accelerated_impulse_durations(acceleration, dur, MAX_IMPULSE_DURATION)
+    up_to_200hz_impulses = [wt for wt in impulses if wt > 1/200]
+    up_to_200hz_wait_times = [impulse/2 for impulse in up_to_200hz_impulses]
+    up_to_200hz_total_time = sum(up_to_200hz_impulses)
+    dur -= up_to_200hz_total_time * 4
+    wait_times = [impulse/2 for impulse in accelerated_impulse_durations(acceleration, dur, MAX_IMPULSE_DURATION)]
+    negated_wait_times = [impulse/2 for impulse in accelerated_impulse_durations(-acceleration, dur, wait_times[-1]*2)]
+    down_to_100hz_wait_times = [wt for wt in negated_wait_times if wt > 1/400]
+    MPINS_SETTINGS = [
+        (GPIO.HIGH, GPIO.HIGH, GPIO.HIGH),
+        (GPIO.HIGH, GPIO.HIGH, GPIO.LOW),
+        (GPIO.LOW, GPIO.HIGH, GPIO.LOW),
+        (GPIO.HIGH, GPIO.LOW, GPIO.LOW)
+    ]
+    # Halve steps at start using M1-M3
+    for m1, m2, m3 in MPINS_SETTINGS:
+        GPIO.output(PINS["M1"], m1)
+        GPIO.output(PINS["M2"], m2)
+        GPIO.output(PINS["M3"], m3)
+        for wt in up_to_200hz_wait_times:
+            GPIO.output(PINS["STEP"], GPIO.HIGH)
+            sleep(wt)
+            GPIO.output(PINS["STEP"], GPIO.LOW)
+            sleep(wt)
+    # Full steps in middle
+    GPIO.output(PINS["M1"], GPIO.LOW)
+    GPIO.output(PINS["M2"], GPIO.LOW)
+    GPIO.output(PINS["M3"], GPIO.LOW)
+    for wt in wait_times:
+        GPIO.output(PINS["STEP"], GPIO.HIGH)
+        sleep(wt)
+        GPIO.output(PINS["STEP"], GPIO.LOW)
+        sleep(wt)
+    for wt in negated_wait_times:
+        GPIO.output(PINS["STEP"], GPIO.HIGH)
+        sleep(wt)
+        GPIO.output(PINS["STEP"], GPIO.LOW)
+        sleep(wt)
+    # Halve steps at end using M1-M3
+    for m1, m2, m3 in reversed(MPINS_SETTINGS):
+        GPIO.output(PINS["M1"], m1)
+        GPIO.output(PINS["M2"], m2)
+        GPIO.output(PINS["M3"], m3)
+        for wt in down_to_100hz_wait_times:
+            GPIO.output(PINS["STEP"], GPIO.HIGH)
+            sleep(wt)
+            GPIO.output(PINS["STEP"], GPIO.LOW)
+            sleep(wt)
 
 if __name__ == "__main__":
     setup()

@@ -106,6 +106,18 @@ if __name__ == "__main__":
                     print("Usage: rotacc2 [radians] [seconds] [start_frequency]")
                     continue
                 motor.rotate_platform2(radians, seconds, start_frequency)
+            elif cmd[0] == "rotacc3":
+                if rotator is not None:
+                    print("Motor is already rotating. Use 'freq 0' to stop it first.")
+                    continue
+                print("Rotating with acceleration with m1-3 pins usage...")
+                try:
+                    radians = float(cmd[1]) if len(cmd) > 1 else math.pi
+                    seconds = float(cmd[2]) if len(cmd) > 2 else 1
+                except ValueError:
+                    print("Usage: rotacc3 [radians] [seconds]")
+                    continue
+                motor.rotate_platform3(radians, seconds)
             elif cmd[0] == "freq":
                 try:
                     freq = int(cmd[1]) if len(cmd) > 1 else 100

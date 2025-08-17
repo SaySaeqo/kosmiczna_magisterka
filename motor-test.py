@@ -45,6 +45,23 @@ def test_acceleration_of_accelerated_impulse():
     final_speed = motor.ROTATION_PER_STEP/ (impulses[-1])
     theoretical_final_speed = motor.ROTATION_PER_STEP/start_impulse + acceleration * duration
     print(f"Computed: {final_speed:.2f} rad/s, Theoretical: {theoretical_final_speed:.2f} rad/s")
+    print(f"Number of impulses: {len(impulses)}")
 
-test_acceleration_of_accelerated_impulse()
-    
+
+def test_frequency_grow_over_time():
+    duration = 1
+    acceleration = 2 * motor.INERTIA_PLATFORM2WHEEL_RATIO * (math.pi) / duration / duration
+    impulses = motor.accelerated_impulse_durations(acceleration, duration, 1/100)
+
+    def sum_times(times):
+        return [sum(times[:i+1]) for i in range(len(times))]
+
+    plt.plot(sum_times(impulses), list(map(lambda x: 1/x, impulses)), label="acceleration")
+    plt.xlabel("Cumulative time (s)")
+    plt.ylabel("Impulse frequency (Hz)")
+    plt.title("Accelerated Impulse Frequency")
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+test_frequency_grow_over_time()
