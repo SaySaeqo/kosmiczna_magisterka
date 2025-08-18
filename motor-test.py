@@ -68,6 +68,8 @@ def test_rotate_platform3_calculations():
     """Test the rotate_platform3 function."""
     duration = 1
     radians = math.pi
+    motor.GPIO.HIGH = 1
+    motor.GPIO.LOW = 0
 
     # Preparations
     MPINS_SETTINGS = [
@@ -86,7 +88,7 @@ def test_rotate_platform3_calculations():
 
     for _ in range(len(MPINS_SETTINGS)):
         part_wait_times += [[impulse/2 for impulse in motor.accelerated_impulse_durations(acceleration, part_duration, first_impulse_time)]]
-        first_impulse_time = part_wait_times[-1]  # Next part
+        first_impulse_time = part_wait_times[-1][-1]  # Next part
     
     dur -= part_duration * len(MPINS_SETTINGS) 
     wait_times = [impulse/2 for impulse in motor.accelerated_impulse_durations(acceleration, dur, part_wait_times[-1][-1]*2)]
@@ -96,7 +98,7 @@ def test_rotate_platform3_calculations():
     first_impulse_time = negated_wait_times[-1]*2*2
     for _ in range(len(MPINS_SETTINGS)):
         negated_part_wait_times += [[impulse/2 for impulse in motor.accelerated_impulse_durations(-acceleration, part_duration, first_impulse_time)]]
-        first_impulse_time = negated_part_wait_times[-1] *2*2  # Next part
+        first_impulse_time = negated_part_wait_times[-1][-1] *2*2  # Next part
 
     part_wait_times_zip = zip(MPINS_SETTINGS, part_wait_times)
     negated_part_wait_times_zip = zip(reversed(MPINS_SETTINGS), negated_part_wait_times)

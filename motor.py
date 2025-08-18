@@ -74,7 +74,6 @@ class MotorRotator:
         self.active = False
         self.rotate_job.join()
 
-@cache
 def accelerated_impulse_durations(acceleration=2*math.pi, duration=1, t0=1/100):
     """Generate an accelerated sine wave for the given frequency and duration."""
     acceleration_constant = acceleration / ROTATION_PER_STEP
@@ -153,7 +152,7 @@ def rotate_platform3(radians, duration=1):
 
     dur = duration / 2
     acceleration = INERTIA_PLATFORM2WHEEL_RATIO * radians / dur / dur
-    
+
     # formula is: t= (wk - wp)/acc, for current L (ROTATION_PER_STEP):
     part_duration = math.pi / acceleration
 
@@ -161,7 +160,7 @@ def rotate_platform3(radians, duration=1):
     first_impulse_time = MAX_IMPULSE_DURATION
     for _ in range(len(MPINS_SETTINGS)):
         part_wait_times += [[impulse/2 for impulse in accelerated_impulse_durations(acceleration, part_duration, first_impulse_time)]]
-        first_impulse_time = part_wait_times[-1]  # Next part
+        first_impulse_time = part_wait_times[-1][-1]  # Next part
     
     dur -= part_duration * len(MPINS_SETTINGS) 
     wait_times = [impulse/2 for impulse in accelerated_impulse_durations(acceleration, dur, part_wait_times[-1][-1]*2)]
@@ -171,7 +170,7 @@ def rotate_platform3(radians, duration=1):
     first_impulse_time = negated_wait_times[-1]*2*2
     for _ in range(len(MPINS_SETTINGS)):
         negated_part_wait_times += [[impulse/2 for impulse in accelerated_impulse_durations(-acceleration, part_duration, first_impulse_time)]]
-        first_impulse_time = negated_part_wait_times[-1] *2*2  # Next part
+        first_impulse_time = negated_part_wait_times[-1][-1] *2*2  # Next part
 
     part_wait_times_zip = zip(MPINS_SETTINGS, part_wait_times)
     negated_part_wait_times_zip = zip(reversed(MPINS_SETTINGS), negated_part_wait_times)
