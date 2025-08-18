@@ -164,7 +164,7 @@ def rotate_platform3(radians, duration=1):
         first_impulse_time = part_wait_times[-1][-1]*2*2  # Next part
     
     dur -= part_duration * len(MPINS_SETTINGS) 
-    wait_times = [impulse/2 for impulse in accelerated_impulse_durations(acceleration, dur, part_wait_times[-1][-1]*2)]
+    wait_times = [impulse/2 for impulse in accelerated_impulse_durations(acceleration, dur, first_impulse_time)]
     negated_wait_times = [impulse/2 for impulse in accelerated_impulse_durations(-acceleration, dur, wait_times[-1]*2)]
 
     negated_part_wait_times = []
