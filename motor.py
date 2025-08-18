@@ -143,28 +143,45 @@ def rotate_platform3(radians, duration=1):
     Rotate the platform by a specified angle (radians) with acceleration and deceleration.
     Uses M1-M3 pins to halve the step count for smoother transitions at the start and end.
     """
+    # Preparations
+    MPINS_SETTINGS = [
+        (GPIO.HIGH, GPIO.HIGH, GPIO.HIGH), # 1/16
+        (GPIO.HIGH, GPIO.HIGH, GPIO.LOW),  # 1/8
+        (GPIO.LOW, GPIO.HIGH, GPIO.LOW),   # 1/4
+        (GPIO.HIGH, GPIO.LOW, GPIO.LOW)    # 1/2
+    ]
+
     dur = duration / 2
     acceleration = INERTIA_PLATFORM2WHEEL_RATIO * radians / dur / dur
-    impulses = accelerated_impulse_durations(acceleration, dur, MAX_IMPULSE_DURATION)
-    up_to_200hz_impulses = [impulse for impulse in impulses if impulse > 1/200]
-    up_to_200hz_wait_times = [impulse/2 for impulse in up_to_200hz_impulses]
-    up_to_200hz_total_time = sum(up_to_200hz_impulses)
-    dur -= up_to_200hz_total_time * 4
-    wait_times = [impulse/2 for impulse in accelerated_impulse_durations(acceleration, dur, MAX_IMPULSE_DURATION)]
+    
+    # formula is: t= (wk - wp)/acc, for current L (ROTATION_PER_STEP):
+    part_duration = math.pi / acceleration
+
+    part_wait_times = []
+    first_impulse_time = MAX_IMPULSE_DURATION
+    for _ in range(len(MPINS_SETTINGS)):
+        part_wait_times += [[impulse/2 for impulse in accelerated_impulse_durations(acceleration, part_duration, first_impulse_time)]]
+        first_impulse_time = part_wait_times[-1]  # Next part
+    
+    dur -= part_duration * len(MPINS_SETTINGS) 
+    wait_times = [impulse/2 for impulse in accelerated_impulse_durations(acceleration, dur, part_wait_times[-1][-1]*2)]
     negated_wait_times = [impulse/2 for impulse in accelerated_impulse_durations(-acceleration, dur, wait_times[-1]*2)]
-    down_to_100hz_wait_times = [wt for wt in negated_wait_times if wt > 1/400]
-    MPINS_SETTINGS = [
-        (GPIO.HIGH, GPIO.HIGH, GPIO.HIGH),
-        (GPIO.HIGH, GPIO.HIGH, GPIO.LOW),
-        (GPIO.LOW, GPIO.HIGH, GPIO.LOW),
-        (GPIO.HIGH, GPIO.LOW, GPIO.LOW)
-    ]
+
+    negated_part_wait_times = []
+    first_impulse_time = negated_wait_times[-1]*2*2
+    for _ in range(len(MPINS_SETTINGS)):
+        negated_part_wait_times += [[impulse/2 for impulse in accelerated_impulse_durations(-acceleration, part_duration, first_impulse_time)]]
+        first_impulse_time = negated_part_wait_times[-1] *2*2  # Next part
+
+    part_wait_times_zip = zip(MPINS_SETTINGS, part_wait_times)
+    negated_part_wait_times_zip = zip(reversed(MPINS_SETTINGS), negated_part_wait_times)
+
     # Halve steps at start using M1-M3
-    for m1, m2, m3 in MPINS_SETTINGS:
+    for (m1, m2, m3), pwts in part_wait_times_zip:
         GPIO.output(PINS["M1"], m1)
         GPIO.output(PINS["M2"], m2)
         GPIO.output(PINS["M3"], m3)
-        for wt in up_to_200hz_wait_times:
+        for wt in pwts:
             GPIO.output(PINS["STEP"], GPIO.HIGH)
             sleep(wt)
             GPIO.output(PINS["STEP"], GPIO.LOW)
@@ -184,11 +201,11 @@ def rotate_platform3(radians, duration=1):
         GPIO.output(PINS["STEP"], GPIO.LOW)
         sleep(wt)
     # Halve steps at end using M1-M3
-    for m1, m2, m3 in reversed(MPINS_SETTINGS):
+    for (m1, m2, m3), pwts in negated_part_wait_times_zip:
         GPIO.output(PINS["M1"], m1)
         GPIO.output(PINS["M2"], m2)
         GPIO.output(PINS["M3"], m3)
-        for wt in down_to_100hz_wait_times:
+        for wt in pwts:
             GPIO.output(PINS["STEP"], GPIO.HIGH)
             sleep(wt)
             GPIO.output(PINS["STEP"], GPIO.LOW)

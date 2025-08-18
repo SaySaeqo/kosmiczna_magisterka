@@ -69,15 +69,36 @@ def test_rotate_platform3_calculations():
     duration = 1
     radians = math.pi
 
+    # Preparations
+    MPINS_SETTINGS = [
+        (motor.GPIO.HIGH, motor.GPIO.HIGH, motor.GPIO.HIGH), # 1/16
+        (motor.GPIO.HIGH, motor.GPIO.HIGH, motor.GPIO.LOW),  # 1/8
+        (motor.GPIO.LOW, motor.GPIO.HIGH, motor.GPIO.LOW),   # 1/4
+        (motor.GPIO.HIGH, motor.GPIO.LOW, motor.GPIO.LOW)    # 1/2
+    ]
+
     dur = duration / 2
     acceleration = motor.INERTIA_PLATFORM2WHEEL_RATIO * radians / dur / dur
-    impulses = motor.accelerated_impulse_durations(acceleration, dur, motor.MAX_IMPULSE_DURATION)
-    up_to_200hz_impulses = [wt for wt in impulses if wt > 1/200]
-    up_to_200hz_wait_times = [impulse/2 for impulse in up_to_200hz_impulses]
-    up_to_200hz_total_time = sum(up_to_200hz_impulses)
-    dur -= up_to_200hz_total_time * 4
-    wait_times = [impulse/2 for impulse in motor.accelerated_impulse_durations(acceleration, dur, motor.MAX_IMPULSE_DURATION)]
+    # formula is: t= (wk - wp)/acc, for current L (ROTATION_PER_STEP):
+    part_duration = math.pi / acceleration
+    part_wait_times = []
+    first_impulse_time = motor.MAX_IMPULSE_DURATION
+
+    for _ in range(len(MPINS_SETTINGS)):
+        part_wait_times += [[impulse/2 for impulse in motor.accelerated_impulse_durations(acceleration, part_duration, first_impulse_time)]]
+        first_impulse_time = part_wait_times[-1]  # Next part
+    
+    dur -= part_duration * len(MPINS_SETTINGS) 
+    wait_times = [impulse/2 for impulse in motor.accelerated_impulse_durations(acceleration, dur, part_wait_times[-1][-1]*2)]
     negated_wait_times = [impulse/2 for impulse in motor.accelerated_impulse_durations(-acceleration, dur, wait_times[-1]*2)]
-    down_to_100hz_wait_times = [wt for wt in negated_wait_times if wt > 1/400]
+
+    negated_part_wait_times = []
+    first_impulse_time = negated_wait_times[-1]*2*2
+    for _ in range(len(MPINS_SETTINGS)):
+        negated_part_wait_times += [[impulse/2 for impulse in motor.accelerated_impulse_durations(-acceleration, part_duration, first_impulse_time)]]
+        first_impulse_time = negated_part_wait_times[-1] *2*2  # Next part
+
+    part_wait_times_zip = zip(MPINS_SETTINGS, part_wait_times)
+    negated_part_wait_times_zip = zip(reversed(MPINS_SETTINGS), negated_part_wait_times)
 
 test_rotate_platform3_calculations()
