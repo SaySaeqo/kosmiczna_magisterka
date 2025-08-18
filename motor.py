@@ -74,6 +74,7 @@ class MotorRotator:
         self.active = False
         self.rotate_job.join()
 
+@cache
 def accelerated_impulse_durations(acceleration=2*math.pi, duration=1, t0=1/100):
     """Generate an accelerated sine wave for the given frequency and duration."""
     acceleration_constant = acceleration / ROTATION_PER_STEP
