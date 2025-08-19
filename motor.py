@@ -75,10 +75,10 @@ class MotorRotator:
         self.rotate_job.join()
 
 @cache
-def accelerated_impulse_durations_with_cond(acceleration, t0=1/100, end_condition = lambda durations: sum(durations) < 1):
+def accelerated_impulse_durations_with_cond(acceleration, t0=1/100, condition = lambda durations: sum(durations) < 1):
     acceleration_constant = acceleration / ROTATION_PER_STEP
     impulse_durations = [t0]
-    while end_condition(impulse_durations):
+    while condition(impulse_durations):
         impulse_durations += [impulse_durations[-1] / (1 + acceleration_constant * impulse_durations[-1]**2)]
     else:
         LOG.debug(f"Last impuls time: {impulse_durations[-1]:.6f} s or {1/impulse_durations[-1]:.2f} Hz")
@@ -86,7 +86,7 @@ def accelerated_impulse_durations_with_cond(acceleration, t0=1/100, end_conditio
 
 def accelerated_impulse_durations(acceleration, duration=1, t0=1/100):
     """Generate an accelerated sine wave for the given frequency and duration."""
-    return accelerated_impulse_durations_with_cond(acceleration, t0=t0, end_condition=lambda durations: sum(durations) < duration)
+    return accelerated_impulse_durations_with_cond(acceleration, t0, lambda durations: sum(durations) < duration)
 
 
 def rotate_platform(radians, duration=1, start_frequency=100):
@@ -161,17 +161,17 @@ def rotate_platform3(radians, duration=1):
     part_wait_times = []
     first_impulse_time = MAX_IMPULSE_DURATION
     for _ in range(len(MPINS_SETTINGS)):
-        part_wait_times += [[impulse/2 for impulse in accelerated_impulse_durations(acceleration, part_duration, first_impulse_time)]]
+        part_wait_times += [[impulse/2 for impulse in accelerated_impulse_durations_with_cond(acceleration, first_impulse_time, lambda durations: durations[-1] > 1/200)]]
         first_impulse_time = part_wait_times[-1][-1]*2*2  # Next part
     
-    dur -= part_duration * len(MPINS_SETTINGS) 
+    dur -= sum(sum(pwts) for pwts in part_wait_times)*2  # Subtract the time used by M1-M3 halving
     wait_times = [impulse/2 for impulse in accelerated_impulse_durations(acceleration, dur, first_impulse_time)]
-    negated_wait_times = [impulse/2 for impulse in accelerated_impulse_durations(-acceleration, dur, wait_times[-1]*2)]
+    negated_wait_times = [impulse/2 for impulse in accelerated_impulse_durations_with_cond(-acceleration, wait_times[-1]*2, lambda durations: durations[-1] < 1/100)]
 
     negated_part_wait_times = []
     first_impulse_time = negated_wait_times[-1]
     for _ in range(len(MPINS_SETTINGS)):
-        negated_part_wait_times += [[impulse/2 for impulse in accelerated_impulse_durations(-acceleration, part_duration, first_impulse_time)]]
+        negated_part_wait_times += [[impulse/2 for impulse in accelerated_impulse_durations_with_cond(-acceleration, first_impulse_time, lambda durations: durations[-1] < 1/100)]]
         first_impulse_time = negated_part_wait_times[-1][-1]  # Next part
 
     part_wait_times_zip = zip(MPINS_SETTINGS, part_wait_times)
