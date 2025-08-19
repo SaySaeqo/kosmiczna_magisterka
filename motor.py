@@ -22,6 +22,14 @@ PINS = {
     #"SLP": NOT_ASSIGNED,
     #"RST": NOT_ASSIGNED,
 }
+MPINS = (PINS["M1"], PINS["M2"], PINS["M3"])
+MPINS_SETTINGS = {
+    1/16: (GPIO.HIGH, GPIO.HIGH, GPIO.HIGH),
+    1/8: (GPIO.HIGH, GPIO.HIGH, GPIO.LOW),
+    1/4: (GPIO.LOW, GPIO.HIGH, GPIO.LOW),
+    1/2: (GPIO.HIGH, GPIO.LOW, GPIO.LOW),
+    1: (GPIO.LOW, GPIO.LOW, GPIO.LOW)
+}
 LOG = logging.getLogger(__name__)
 
 def setup():
@@ -80,9 +88,16 @@ class MotorRotator:
         self.active = False
         self.rotate_job.join()
 
-@cache
+def get_step_resolution():
+    """Get the current step resolution."""
+    for resolution, settings in MPINS_SETTINGS.items():
+        if (GPIO.input(pin) for pin in MPINS) == settings:
+            return resolution
+    raise Exception("Current step resolution not found in MPINS_SETTINGS.")
+
+
 def accelerated_impulse_durations_with_cond(acceleration, t0=1/100, condition = lambda durations: sum(durations) < 1):
-    acceleration_constant = acceleration / ROTATION_PER_STEP
+    acceleration_constant = acceleration / ROTATION_PER_STEP / get_step_resolution()
     impulse_durations = [t0]
     while condition(impulse_durations):
         impulse_durations += [impulse_durations[-1] / (1 + acceleration_constant * impulse_durations[-1]**2)]
@@ -90,7 +105,6 @@ def accelerated_impulse_durations_with_cond(acceleration, t0=1/100, condition = 
         LOG.debug(f"Last impuls time: {impulse_durations[-1]:.6f} s or {1/impulse_durations[-1]:.2f} Hz")
     return impulse_durations
 
-@cache
 def accelerated_impulse_durations(acceleration, duration=1, t0=1/100):
     """Generate an accelerated sine wave for the given frequency and duration."""
     return accelerated_impulse_durations_with_cond(acceleration, t0, lambda durations: sum(durations) < duration)
@@ -131,13 +145,6 @@ def rotate_platform3(radians, duration=1):
     Uses M1-M3 pins to halve the step count for smoother transitions at the start and end.
     """
     # Preparations
-    MPINS = [PINS["M1"], PINS["M2"], PINS["M3"]]
-    MPINS_SETTINGS = [
-        (GPIO.HIGH, GPIO.HIGH, GPIO.HIGH), # 1/16
-        (GPIO.HIGH, GPIO.HIGH, GPIO.LOW),  # 1/8
-        (GPIO.LOW, GPIO.HIGH, GPIO.LOW),   # 1/4
-        (GPIO.HIGH, GPIO.LOW, GPIO.LOW)    # 1/2
-    ]
 
     dur = duration / 2
     acceleration = INERTIA_PLATFORM2WHEEL_RATIO * radians / dur / dur
@@ -147,7 +154,7 @@ def rotate_platform3(radians, duration=1):
 
     part_wait_times = []
     first_impulse_time = MAX_IMPULSE_DURATION
-    for _ in range(len(MPINS_SETTINGS)):
+    for _ in range(len(MPINS_SETTINGS)-1):
         part_wait_times += [[impulse/2 for impulse in accelerated_impulse_durations_with_cond(acceleration, first_impulse_time, lambda durations: durations[-1] > 1/200)]]
         first_impulse_time = part_wait_times[-1][-1]*2*2  # Next part
     
@@ -157,12 +164,12 @@ def rotate_platform3(radians, duration=1):
 
     negated_part_wait_times = []
     first_impulse_time = negated_wait_times[-1]
-    for _ in range(len(MPINS_SETTINGS)):
+    for _ in range(len(MPINS_SETTINGS)-1):
         negated_part_wait_times += [[impulse/2 for impulse in accelerated_impulse_durations_with_cond(-acceleration, first_impulse_time, lambda durations: durations[-1] < 1/100)]]
         first_impulse_time = negated_part_wait_times[-1][-1]  # Next part
 
-    part_wait_times_zip = zip(MPINS_SETTINGS, part_wait_times)
-    negated_part_wait_times_zip = zip(reversed(MPINS_SETTINGS), negated_part_wait_times)
+    part_wait_times_zip = zip(MPINS_SETTINGS[:-1], part_wait_times)
+    negated_part_wait_times_zip = zip(reversed(MPINS_SETTINGS[:-1]), negated_part_wait_times)
 
     # Halve steps at start using M1-M3
     for settings, pwts in part_wait_times_zip:
