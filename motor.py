@@ -75,18 +75,19 @@ class MotorRotator:
         self.rotate_job.join()
 
 @cache
-def accelerated_impulse_durations(acceleration=2*math.pi, duration=1, t0=1/100):
-    """Generate an accelerated sine wave for the given frequency and duration."""
+def accelerated_impulse_durations_with_cond(acceleration, t0=1/100, end_condition = lambda durations: sum(durations) < 1):
     acceleration_constant = acceleration / ROTATION_PER_STEP
-    impulse_durations=[t0]
-    duration -= impulse_durations[0]
-    # Next impuls times
-    while duration > 0:
+    impulse_durations = [t0]
+    while end_condition(impulse_durations):
         impulse_durations += [impulse_durations[-1] / (1 + acceleration_constant * impulse_durations[-1]**2)]
-        duration -= impulse_durations[-1]
     else:
         LOG.debug(f"Last impuls time: {impulse_durations[-1]:.6f} s or {1/impulse_durations[-1]:.2f} Hz")
     return impulse_durations
+
+def accelerated_impulse_durations(acceleration, duration=1, t0=1/100):
+    """Generate an accelerated sine wave for the given frequency and duration."""
+    return accelerated_impulse_durations_with_cond(acceleration, t0=t0, end_condition=lambda durations: sum(durations) < duration)
+
 
 def rotate_platform(radians, duration=1, start_frequency=100):
     acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
