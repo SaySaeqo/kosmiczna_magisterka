@@ -11,27 +11,25 @@ INERTIA_PLATFORM2WHEEL_RATIO = 4.92
 MIN_FREQUENCY = 100
 MAX_IMPULSE_DURATION = 1/MIN_FREQUENCY
 
-NOT_ASSIGNED = 26
 PINS = {
     "M1": 17,
     "M2": 27,
     "M3": 22,
     "DIR": 23,
     "STEP": 24,
+    # These below are negated on the driver
     "EN": 4,
-    "SLP": NOT_ASSIGNED,
-    "RST": NOT_ASSIGNED
+    #"SLP": NOT_ASSIGNED,
+    #"RST": NOT_ASSIGNED,
 }
 LOG = logging.getLogger(__name__)
 
 def setup():
     GPIO.setmode(GPIO.BCM)
-    for pin in PINS.values():
-        GPIO.setup(pin, GPIO.OUT)
+    GPIO.setup(PINS.values(), GPIO.OUT, initial=GPIO.LOW)
 
 def reset():
-    for pin in PINS.values():
-        GPIO.output(pin, GPIO.LOW)
+    GPIO.output(PINS.values(), GPIO.LOW)
     # These 2 are reversed in the motor driver:
     # GPIO.output(PINS["SLP"], GPIO.HIGH)
     # GPIO.output(PINS["RST"], GPIO.HIGH)
@@ -45,6 +43,14 @@ def generate_sine_wave(frequency=1, duration=1):
         sleep(wait_time)
         yield GPIO.LOW
         sleep(wait_time)
+
+def STEP_signal(wait_times: list[float]):
+    """Trigger steps based on the provided wait times."""
+    for wt in wait_times:
+        GPIO.output(PINS["STEP"], GPIO.HIGH)
+        sleep(wt)
+        GPIO.output(PINS["STEP"], GPIO.LOW)
+        sleep(wt)
 
 class MotorRotator:
     def __init__(self, frequency=100):
@@ -92,33 +98,21 @@ def accelerated_impulse_durations(acceleration, duration=1, t0=1/100):
 def rotate_platform(radians, duration=1, start_frequency=100):
     acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
     wait_times = [impulse/2 for impulse in accelerated_impulse_durations(acceleration, duration, 1/start_frequency)]
-    for wt in wait_times:
-        GPIO.output(PINS["STEP"], GPIO.HIGH)
-        sleep(wt)
-        GPIO.output(PINS["STEP"], GPIO.LOW)
-        sleep(wt)
-    return 1/wt/2  # Return the final frequency
+    STEP_signal(wait_times)
+    return 1/wait_times[-1]/2  # Return the final frequency
 
 def accelerate(start_frequency=100, final_frequency=200, duration=1):
     """Accelerate the motor to a given frequency over a specified duration."""
     acceleration = ROTATION_PER_STEP * (final_frequency - start_frequency) / duration / duration
     wait_times = [impulse/2 for impulse in accelerated_impulse_durations(acceleration, duration, 1/start_frequency)]
-    for wt in wait_times:
-        GPIO.output(PINS["STEP"], GPIO.HIGH)
-        sleep(wt)
-        GPIO.output(PINS["STEP"], GPIO.LOW)
-        sleep(wt)
-    return 1/wt/2  # Return the final frequency
+    STEP_signal(wait_times)
+    return 1/wait_times[-1]/2  # Return the final frequency
 
 def rotate_platform_deceleration(radians, duration=1, start_frequency=50):
     acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
     wait_times = [impulse/2 for impulse in accelerated_impulse_durations(-acceleration, duration, 1/start_frequency)]
-    for wt in wait_times:
-        GPIO.output(PINS["STEP"], GPIO.HIGH)
-        sleep(wt)
-        GPIO.output(PINS["STEP"], GPIO.LOW)
-        sleep(wt)
-    return 1/wt/2  # Return the final frequency
+    STEP_signal(wait_times)
+    return 1/wait_times[-1]/2  # Return the final frequency
 
 def rotate_platform2(radians, duration=1, start_frequency=50):
     """Rotate the platform by a specified angle in radians."""
@@ -126,18 +120,9 @@ def rotate_platform2(radians, duration=1, start_frequency=50):
     acceleration = INERTIA_PLATFORM2WHEEL_RATIO*radians/dur/dur
     wait_times = [impulse/2 for impulse in accelerated_impulse_durations(acceleration, dur, 1/start_frequency)]
     negated_wait_times = [impulse/2 for impulse in accelerated_impulse_durations(-acceleration, dur, wait_times[-1]*2)]
-    for wt in wait_times:
-        GPIO.output(PINS["STEP"], GPIO.HIGH)
-        sleep(wt)
-        GPIO.output(PINS["STEP"], GPIO.LOW)
-        sleep(wt)
-    
-    # Deaccelerate
-    for wt in negated_wait_times:
-        GPIO.output(PINS["STEP"], GPIO.HIGH)
-        sleep(wt)
-        GPIO.output(PINS["STEP"], GPIO.LOW)
-        sleep(wt)
+
+    STEP_signal(wait_times)           # Accelerate
+    STEP_signal(negated_wait_times)   # Decelerate
 
 def rotate_platform3(radians, duration=1):
     """
@@ -145,6 +130,7 @@ def rotate_platform3(radians, duration=1):
     Uses M1-M3 pins to halve the step count for smoother transitions at the start and end.
     """
     # Preparations
+    MPINS = [PINS["M1"], PINS["M2"], PINS["M3"]]
     MPINS_SETTINGS = [
         (GPIO.HIGH, GPIO.HIGH, GPIO.HIGH), # 1/16
         (GPIO.HIGH, GPIO.HIGH, GPIO.LOW),  # 1/8
@@ -156,7 +142,7 @@ def rotate_platform3(radians, duration=1):
     acceleration = INERTIA_PLATFORM2WHEEL_RATIO * radians / dur / dur
 
     # formula is: t= (wk - wp)/acc, for current L (ROTATION_PER_STEP):
-    part_duration = math.pi / acceleration
+    # part_duration = math.pi / acceleration
 
     part_wait_times = []
     first_impulse_time = MAX_IMPULSE_DURATION
@@ -178,45 +164,23 @@ def rotate_platform3(radians, duration=1):
     negated_part_wait_times_zip = zip(reversed(MPINS_SETTINGS), negated_part_wait_times)
 
     # Halve steps at start using M1-M3
-    for (m1, m2, m3), pwts in part_wait_times_zip:
-        GPIO.output(PINS["M1"], m1)
-        GPIO.output(PINS["M2"], m2)
-        GPIO.output(PINS["M3"], m3)
-        for wt in pwts:
-            GPIO.output(PINS["STEP"], GPIO.HIGH)
-            sleep(wt)
-            GPIO.output(PINS["STEP"], GPIO.LOW)
-            sleep(wt)
+    for settings, pwts in part_wait_times_zip:
+        GPIO.output(MPINS, settings)
+        STEP_signal(pwts)
+
     # Full steps in middle
-    GPIO.output(PINS["M1"], GPIO.LOW)
-    GPIO.output(PINS["M2"], GPIO.LOW)
-    GPIO.output(PINS["M3"], GPIO.LOW)
-    for wt in wait_times:
-        GPIO.output(PINS["STEP"], GPIO.HIGH)
-        sleep(wt)
-        GPIO.output(PINS["STEP"], GPIO.LOW)
-        sleep(wt)
-    for wt in negated_wait_times:
-        GPIO.output(PINS["STEP"], GPIO.HIGH)
-        sleep(wt)
-        GPIO.output(PINS["STEP"], GPIO.LOW)
-        sleep(wt)
+    GPIO.output(MPINS, GPIO.LOW)
+    STEP_signal(wait_times)
+    STEP_signal(negated_wait_times)
+
     # Halve steps at end using M1-M3
-    for (m1, m2, m3), pwts in negated_part_wait_times_zip:
-        GPIO.output(PINS["M1"], m1)
-        GPIO.output(PINS["M2"], m2)
-        GPIO.output(PINS["M3"], m3)
-        for wt in pwts:
-            GPIO.output(PINS["STEP"], GPIO.HIGH)
-            sleep(wt)
-            GPIO.output(PINS["STEP"], GPIO.LOW)
-            sleep(wt)
+    for settings, pwts in negated_part_wait_times_zip:
+        GPIO.output(MPINS, settings)
+        STEP_signal(pwts)
+
     # Reset M1-M3 pins
-    GPIO.output(PINS["M1"], GPIO.LOW)
-    GPIO.output(PINS["M2"], GPIO.LOW)
-    GPIO.output(PINS["M3"], GPIO.LOW)
+    GPIO.output(MPINS, GPIO.LOW)
 
 if __name__ == "__main__":
     setup()
-    reset()
     GPIO.output(PINS["EN"], GPIO.HIGH)  # DISABLE motor
