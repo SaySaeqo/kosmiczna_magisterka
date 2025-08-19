@@ -90,6 +90,7 @@ def accelerated_impulse_durations_with_cond(acceleration, t0=1/100, condition = 
         LOG.debug(f"Last impuls time: {impulse_durations[-1]:.6f} s or {1/impulse_durations[-1]:.2f} Hz")
     return impulse_durations
 
+@cache
 def accelerated_impulse_durations(acceleration, duration=1, t0=1/100):
     """Generate an accelerated sine wave for the given frequency and duration."""
     return accelerated_impulse_durations_with_cond(acceleration, t0, lambda durations: sum(durations) < duration)
