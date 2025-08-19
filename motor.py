@@ -91,7 +91,7 @@ class MotorRotator:
 def get_step_resolution():
     """Get the current step resolution."""
     for resolution, settings in MPINS_SETTINGS.items():
-        if (GPIO.input(pin) for pin in MPINS) == settings:
+        if all(x == y for x, y in zip((GPIO.input(pin) for pin in MPINS), settings)):
             return resolution
     raise Exception("Current step resolution not found in MPINS_SETTINGS.")
 
