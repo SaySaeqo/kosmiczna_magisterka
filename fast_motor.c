@@ -1,7 +1,7 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <pigpio.h>
-# define CHECK_STATUS(status, msg) \
+#define CHECK_STATUS(status, msg) \
     if (status != 0) { \
         PyErr_SetString(PyExc_Exception, msg); \
         return NULL; \
@@ -37,15 +37,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
     Py_RETURN_NONE;
 }
 
-PyMODINIT_FUNC
-PyInit_fast_motor(void)
-{
-    return PyModuleDef_Init(&fast_motor_module);
-}
-
-char fast_motor_func_docs[] = ;
-
-PyMethodDef fast_motor_funcs[] = {
+static PyMethodDef fast_motor_funcs[] = {
 	{	
         "generate_signal",
 		generate_signal,
@@ -59,7 +51,7 @@ static struct PyModuleDef fast_motor_module = {
     .m_base = PyModuleDef_HEAD_INIT,
     .m_name = "fast_motor",
     .m_size = 0, // allow module re-initialization
-    .m_doc = "Module for accelerating stepper motor wave generations."
+    .m_doc = "Module for accelerating stepper motor wave generations.",
     .m_methods = fast_motor_funcs,
 };
 
