@@ -1,9 +1,12 @@
 import RPi.GPIO as GPIO
-from time import sleep
+from time import sleep, perf_counter
 from threading import Thread
 import math
 import logging
 from functools import cache
+import pigpio
+
+import kosmiczna_magisterka.fast_motor as fast_motor
 
 FULL_ROTATION = 200
 ROTATION_PER_STEP = 2*math.pi / FULL_ROTATION
@@ -110,6 +113,109 @@ def accelerated_impulse_durations(acceleration, duration=1, t0=1/100):
     """Generate an accelerated sine wave for the given frequency and duration."""
     return accelerated_impulse_durations_with_cond(acceleration, t0, lambda durations: sum(durations) < duration)
 
+def pigpio_accelerated_signal(acceleration, start_frequency, duration):
+    acceleration_constant = acceleration / ROTATION_PER_STEP / get_step_resolution()
+
+    a = start_frequency
+    b= int(round(acceleration_constant*10, 1)*10)
+
+    pi = pigpio.pi()
+    pi.hardware_clock(4, 10_000_000)
+
+    script = f"""
+        LD p0 {b}
+        LD p5 {a}
+        LD p6 {PINS["STEP"]}
+        LD p1 {int(duration*10**6)}
+        LD p2 {int(1/start_frequency*10**6)}
+        LD p3 1000
+        LD p4 1000000000
+        LD v0 p2
+        LD v1 p2
+        TAG 100
+        LDA v1
+        DIV 2
+        STA v3
+
+        MICS v3
+        W p6 1
+        MICS v3
+        W p6 0
+
+        PUSH p0
+        PUSH v0
+        CALL 200
+        POPA
+        MLT 10000000
+
+        ADD p5
+
+        STA v2
+        LDA v1
+        DIV v2
+        STA v1
+        ADD v0
+        STA v0
+        CMP p1
+        JM 100
+        JMP 999
+
+        TAG 200
+        POPA
+        POP v10
+        POP v12
+        PUSHA
+
+        LDA v10
+        AND 65535
+        STA v11
+        LDA v10
+        AND 4294901760
+        RRA 16
+        STA v10
+
+        LDA v12
+        AND 65535
+        STA v13
+        LDA v12
+        AND 4294901760
+        RRA 16
+        STA v12
+
+        MLT v10
+        STA v14
+
+        LDA v12
+        MLT v11
+        RRA 16
+        AND 65535
+        ADD v14
+        STA v14
+
+        LDA v10
+        MLT v13
+        RRA 16
+        AND 65535
+        ADD v14
+        STA v14
+
+        POPA
+        PUSH v14
+        PUSHA
+        RET
+
+
+        TAG 999
+    """
+    pi.store_script(
+        f"".encode()
+    )
+
+def c_test_signal(pin, how_much):
+    start = perf_counter()
+    fast_motor.generate_signal(pin, how_much)
+    end = perf_counter()
+    print(f"Generated {how_much / (end - start):.6f} impulses per second")
 
 def rotate_platform(radians, duration=1, start_frequency=100):
     acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration

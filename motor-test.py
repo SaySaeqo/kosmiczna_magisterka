@@ -9,12 +9,24 @@ rpi_stub = types.ModuleType("RPi")
 sys.modules["RPi"] = rpi_stub
 rpi_gpio_stub.HIGH = 1
 rpi_gpio_stub.LOW = 0
+pigpio_stub = types.ModuleType("pigpio")
+sys.modules["pigpio"] = pigpio_stub
+class pi_stub:
+    def __init__(self):
+        self.hardware_PWM = lambda gpio, frequency, dutycycle: None
+        self.set_mode = lambda gpio, mode: None
+        self.write = lambda gpio, value: None
+        self.read = lambda gpio: 0
+pigpio_stub.pi = lambda: pi_stub()
 
+import motor
+motor.get_step_resolution = lambda: 1/16
 
 from motor import *
 import math
 import types
 import matplotlib.pyplot as plt
+
 
 def test_negation_of_accelerated_impulse():
     """Test the accelerated impulse durations generator."""
@@ -27,8 +39,9 @@ def test_negation_of_accelerated_impulse():
         return [sum(times[:i+1]) for i in range(len(times))]
 
     r_impulses = list(reversed(impulses))
-    plt.plot(sum_times(r_impulses), r_impulses, label="acceleration")
-    plt.plot(sum_times(n_impulses), n_impulses, label="deceleration")
+    plt.plot(impulses, label="acceleration")
+    plt.xscale("log")
+    # plt.plot(sum_times(n_impulses), n_impulses, label="deceleration")
     plt.xlabel("Cumulative time (s)")
     plt.ylabel("Impulse duration (s)")
     plt.title("Accelerated Impulse Durations")
@@ -40,12 +53,12 @@ def test_acceleration_of_accelerated_impulse():
     """Test the acceleration of the accelerated impulse durations generator."""
     duration = 1
     acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * (math.pi) / duration / duration
-    start_impulse = 1/100
+    start_impulse = 1/300
     impulses = accelerated_impulse_durations(acceleration, duration, start_impulse)
 
     # Speeds of the flywheel
-    final_speed = ROTATION_PER_STEP/ (impulses[-1])
-    theoretical_final_speed = ROTATION_PER_STEP/start_impulse + acceleration * duration
+    final_speed = (ROTATION_PER_STEP * get_step_resolution()) / (impulses[-1])
+    theoretical_final_speed = (ROTATION_PER_STEP * get_step_resolution())/start_impulse + acceleration * duration
     print(f"Computed: {final_speed:.2f} rad/s, Theoretical: {theoretical_final_speed:.2f} rad/s")
     print(f"Number of impulses: {len(impulses)}")
 
@@ -112,4 +125,4 @@ def test_rotate_platform3_calculations():
     print(f"All summed: {(sum(wait_times) + sum(negated_wait_times) + sum(sum(pwts) for pwts in part_wait_times) + sum(sum(pwts) for pwts in negated_part_wait_times))*2:.6f} s")
 
 logging.basicConfig(level=logging.DEBUG)
-test_rotate_platform3_calculations()
+test_negation_of_accelerated_impulse()
