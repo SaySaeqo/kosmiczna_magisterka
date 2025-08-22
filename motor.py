@@ -37,10 +37,10 @@ LOG = logging.getLogger(__name__)
 
 def setup():
     GPIO.setmode(GPIO.BCM)
-    GPIO.setup(PINS.values(), GPIO.OUT, initial=GPIO.LOW)
+    GPIO.setup(list(PINS.values()), GPIO.OUT, initial=GPIO.LOW)
 
 def reset():
-    GPIO.output(PINS.values(), GPIO.LOW)
+    GPIO.output(list(PINS.values()), GPIO.LOW)
     # These 2 are reversed in the motor driver:
     # GPIO.output(PINS["SLP"], GPIO.HIGH)
     # GPIO.output(PINS["RST"], GPIO.HIGH)
