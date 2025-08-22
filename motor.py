@@ -6,8 +6,6 @@ import logging
 from functools import cache
 import pigpio
 
-import kosmiczna_magisterka.fast_motor as fast_motor
-
 FULL_ROTATION = 200
 ROTATION_PER_STEP = 2*math.pi / FULL_ROTATION
 INERTIA_PLATFORM2WHEEL_RATIO = 4.92
@@ -210,12 +208,6 @@ def pigpio_accelerated_signal(acceleration, start_frequency, duration):
     pi.store_script(
         f"".encode()
     )
-
-def c_test_signal(pin, how_much):
-    start = perf_counter()
-    fast_motor.generate_signal(pin, how_much)
-    end = perf_counter()
-    print(f"Generated {how_much / (end - start):.6f} impulses per second")
 
 def rotate_platform(radians, duration=1, start_frequency=100):
     acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
