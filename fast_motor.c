@@ -1,10 +1,15 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <pigpio.h>
-
+# define CHECK_STATUS(status, msg) \
+    if (status != 0) { \
+        PyErr_SetString(PyExc_Exception, msg); \
+        return NULL; \
+    }
 
 static PyObject* generate_signal(PyObject* self, PyObject* args)
 {
+    int status;
     int pin;
     int how_much;
     if (!PyArg_ParseTuple(args, "ii", &pin, &how_much))
@@ -13,15 +18,22 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
     }
     
 
-    gpioInitialise();
-    gpioSetMode(pin, PI_OUTPUT);
+    if (gpioInitialise() < 0)
+    {
+        PyErr_SetString(PyExc_Exception, "Failed to initialize GPIO");
+        return NULL;
+    }
+    status = gpioSetMode(pin, PI_OUTPUT);
+    CHECK_STATUS(status, "Failed to set GPIO mode");
     for (int i = 0; i < how_much; i++)
     {
-        gpioWrite(pin, 1);
-        gpioWrite(pin, 0);
+        status = gpioWrite(pin, 1);
+        CHECK_STATUS(status, "Failed to write GPIO");
+        status = gpioWrite(pin, 0);
+        CHECK_STATUS(status, "Failed to write GPIO");
     }
     gpioTerminate();
-    
+
     Py_RETURN_NONE;
 }
 

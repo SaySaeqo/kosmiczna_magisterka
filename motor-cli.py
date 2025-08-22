@@ -155,6 +155,12 @@ if __name__ == "__main__":
                     continue
 
                 commands.append(with_arg(functools.partial(motor.rotate_platform3, radians, seconds)))
+            elif cmd[0] == "c_test":
+                if rotator is not None:
+                    print("Motor is already rotating. Use 'freq 0' to stop it first.")
+                    continue
+                print("Running c_test...")
+                commands.append(with_arg(functools.partial(motor.c_test_signal, 26, 50000)))
             elif cmd[0] == "freq":
                 try:
                     if len(cmd) > 1 and cmd[1] == "-":
