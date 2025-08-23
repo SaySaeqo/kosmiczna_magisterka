@@ -47,12 +47,12 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
     while (time_passed < duration)
     {
         useconds_t sleep_time = (useconds_t)(impulse_duration * 500000);
-        ASSERT_SUCCESS(gpioWrite(pin, 1), "Failed to write GPIO");
-        usleep(sleep_time);
-        ASSERT_SUCCESS(gpioWrite(pin, 0), "Failed to write GPIO");
-        usleep(sleep_time);
         time_passed += impulse_duration;
+        gpioWrite(pin, 1);
+        usleep(sleep_time);
         impulse_duration = 1.0 / (freq + acc_const * time_passed);
+        gpioWrite(pin, 0);
+        usleep(sleep_time);
     }
     gpioTerminate();
 
