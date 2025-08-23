@@ -1,6 +1,7 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <pigpio.h>
+#include <stdio.h>
 #define ASSERT_SUCCESS(status, msg) \
     if (status < 0) { \
         PyErr_SetString(PyExc_Exception, msg); \
@@ -44,8 +45,11 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
     ASSERT_SUCCESS(gpioInitialise(), "Failed to initialize GPIO");
     ASSERT_SUCCESS(gpioSetMode(pin, PI_OUTPUT), "Failed to set GPIO mode");
 
+    int start_loop, end_loop;
+
     while (time_passed < duration)
     {
+        start_loop = gpioTick();
         useconds_t sleep_time = (useconds_t)(impulse_duration * 500000);
         time_passed += impulse_duration;
         gpioWrite(pin, 1);
@@ -53,6 +57,9 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
         impulse_duration = 1.0 / (freq + acc_const * time_passed);
         gpioWrite(pin, 0);
         usleep(sleep_time);
+        end_loop = gpioTick();
+        printf("Loop duration: %d microseconds\n", end_loop - start_loop);
+        printf("Impulse duration: %f microseconds\n", sleep_time * 2);
     }
     gpioTerminate();
 
