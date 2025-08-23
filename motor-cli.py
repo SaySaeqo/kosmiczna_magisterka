@@ -221,7 +221,7 @@ if __name__ == "__main__":
                 state = int(cmd[1])
                 print(f"{cmd[0]} set to {'HIGH' if state else 'LOW'}")
 
-                commands.append(functools.partial(GPIO.output, motor.PINS[cmd[0]], state))
+                commands.append(with_arg(functools.partial(GPIO.output, motor.PINS[cmd[0]], state)))
             elif cmd[0] == "reset":
                 print("Resetting all pins...")
                 commands.append(motor.reset)
