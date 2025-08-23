@@ -171,6 +171,24 @@ if __name__ == "__main__":
 
                 acceleration = 2 * motor.INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
                 commands.append(with_arg(functools.partial(cmotor.c_generate_signal, motor.PINS["STEP"], acceleration, frequency, duration)))
+            elif cmd[0] == "crotacc2":
+                if rotator is not None:
+                    print("Motor is already rotating. Use 'freq 0' to stop it first.")
+                    continue
+                print("Running crotacc2...")
+                try:
+                    radians = float(cmd[1]) if len(cmd) > 1 else math.pi
+                    duration = float(cmd[2]) if len(cmd) > 2 else 1
+                    frequency = int(cmd[3]) if len(cmd) > 3 else 300
+                except ValueError:
+                    print("Usage: crotacc2 [radians] [seconds] [frequency]")
+                    continue
+                dur= duration/2
+                acceleration = motor.INERTIA_PLATFORM2WHEEL_RATIO*radians/dur/dur
+                end_freq = int(frequency + acceleration * dur * motor.ROTATION_PER_STEP)
+                commands.append(with_arg(functools.partial(cmotor.c_generate_signal, motor.PINS["STEP"], acceleration, frequency, dur)))
+                commands.append(with_arg(functools.partial(cmotor.c_generate_signal, motor.PINS["STEP"], -acceleration, end_freq, dur)))
+
             elif cmd[0] == "freq":
                 try:
                     if len(cmd) > 1 and cmd[1] == "-":
