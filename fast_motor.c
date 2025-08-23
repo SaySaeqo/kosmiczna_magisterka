@@ -1,15 +1,14 @@
 #define PY_SSIZE_T_CLEAN
 #include <Python.h>
 #include <pigpio.h>
-#define CHECK_STATUS(status, msg) \
-    if (status != 0) { \
+#define ASSERT_SUCCESS(status, msg) \
+    if (status < 0) { \
         PyErr_SetString(PyExc_Exception, msg); \
         return NULL; \
     }
 
-static PyObject* generate_signal(PyObject* self, PyObject* args)
+static PyObject* test_signal(PyObject* self, PyObject* args)
 {
-    int status;
     int pin;
     int how_much;
     if (!PyArg_ParseTuple(args, "ii", &pin, &how_much))
@@ -17,20 +16,43 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
         return NULL;
     }
     
-
-    if (gpioInitialise() < 0)
-    {
-        PyErr_SetString(PyExc_Exception, "Failed to initialize GPIO");
-        return NULL;
-    }
-    status = gpioSetMode(pin, PI_OUTPUT);
-    CHECK_STATUS(status, "Failed to set GPIO mode");
+    ASSERT_SUCCESS(gpioInitialise(), "Failed to initialize GPIO");
+    ASSERT_SUCCESS(gpioSetMode(pin, PI_OUTPUT), "Failed to set GPIO mode");
     for (int i = 0; i < how_much; i++)
     {
-        status = gpioWrite(pin, 1);
-        CHECK_STATUS(status, "Failed to write GPIO");
-        status = gpioWrite(pin, 0);
-        CHECK_STATUS(status, "Failed to write GPIO");
+        ASSERT_SUCCESS(gpioWrite(pin, 1), "Failed to write GPIO");
+        ASSERT_SUCCESS(gpioWrite(pin, 0), "Failed to write GPIO");
+    }
+    gpioTerminate();
+
+    Py_RETURN_NONE;
+}
+
+static PyObject* generate_signal(PyObject* self, PyObject* args)
+{
+    int pin;
+    float acc_const, duration;
+    int freq;
+    if (!PyArg_ParseTuple(args, "ifif", &pin, &acc_const, &freq, &duration))
+    {
+        return NULL;
+    }
+
+    float time_passed = 0.0;
+    float impulse_duration = 1.0 / freq;
+
+    ASSERT_SUCCESS(gpioInitialise(), "Failed to initialize GPIO");
+    ASSERT_SUCCESS(gpioSetMode(pin, PI_OUTPUT), "Failed to set GPIO mode");
+
+    while (time_passed < duration)
+    {
+        useconds_t sleep_time = (useconds_t)(impulse_duration * 500000);
+        ASSERT_SUCCESS(gpioWrite(pin, 1), "Failed to write GPIO");
+        usleep(sleep_time);
+        ASSERT_SUCCESS(gpioWrite(pin, 0), "Failed to write GPIO");
+        usleep(sleep_time);
+        time_passed += impulse_duration;
+        impulse_duration = 1.0 / (freq + acc_const * time_passed);
     }
     gpioTerminate();
 
@@ -39,6 +61,12 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
 
 static PyMethodDef fast_motor_funcs[] = {
 	{	
+        "test_signal",
+		test_signal,
+		METH_VARARGS,
+		"Generates a wave signal for given parameters."
+    },
+    {	
         "generate_signal",
 		generate_signal,
 		METH_VARARGS,
