@@ -58,7 +58,6 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
 
     acc_const = -acc_const;
     time_passed = 0.0;
-    impulse_duration = wait_times[wait_times_length - 1] / 500000.0;
     freq = 1.0 / impulse_duration;
 
     useconds_t nwait_times[20000];
