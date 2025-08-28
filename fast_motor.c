@@ -69,7 +69,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
         gpioSleep(PI_TIME_RELATIVE, 0, wait_times[i]);
         // end_loop = gpioTick();
         // printf("Loop duration: %d microseconds\n", end_loop - start_loop);
-        // printf("Impulse duration: %f microseconds\n", sleep_time * 2);
+        // printf("Impulse duration: %d microseconds\n", sleep_time * 2);
     }
     Py_END_ALLOW_THREADS
     
