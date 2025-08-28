@@ -38,6 +38,8 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
     {
         return NULL;
     }
+    acc_const /= 2;
+    duration /= 2;
 
     float time_passed = 0.0;
     float impulse_duration = 1.0 / freq;
@@ -54,6 +56,22 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
         wait_times[wait_times_length++] = sleep_time;
     }
 
+    time_passed = 0.0;
+    impulse_duration = wait_times[wait_times_length - 1] / 500000.0;
+    freq = 1.0 / impulse_duration;
+
+    useconds_t nwait_times[20000];
+    int nwait_times_length = 0;
+
+    while (time_passed < duration)
+    {
+        useconds_t sleep_time = (useconds_t)(impulse_duration * 500000);
+        time_passed += impulse_duration;
+        impulse_duration = 1.0 / (freq + acc_const * time_passed);
+
+        nwait_times[nwait_times_length++] = sleep_time;
+    }
+
     ASSERT_SUCCESS(gpioInitialise(), "Failed to initialize GPIO");
     ASSERT_SUCCESS(gpioSetMode(pin, PI_OUTPUT), "Failed to set GPIO mode");
 
@@ -67,6 +85,17 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
         gpioSleep(PI_TIME_RELATIVE, 0, wait_times[i]);
         gpioWrite(pin, 0);
         gpioSleep(PI_TIME_RELATIVE, 0, wait_times[i]);
+        // end_loop = gpioTick();
+        // printf("Loop duration: %d microseconds\n", end_loop - start_loop);
+        // printf("Impulse duration: %d microseconds\n", sleep_time * 2);
+    }
+    for (int i = 0; i < nwait_times_length; i++)
+    {
+        // start_loop = gpioTick();
+        gpioWrite(pin, 1);
+        gpioSleep(PI_TIME_RELATIVE, 0, nwait_times[i]);
+        gpioWrite(pin, 0);
+        gpioSleep(PI_TIME_RELATIVE, 0, nwait_times[i]);
         // end_loop = gpioTick();
         // printf("Loop duration: %d microseconds\n", end_loop - start_loop);
         // printf("Impulse duration: %d microseconds\n", sleep_time * 2);
