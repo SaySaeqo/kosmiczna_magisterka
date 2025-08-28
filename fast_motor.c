@@ -56,6 +56,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
         wait_times[wait_times_length++] = sleep_time;
     }
 
+    acc_const = -acc_const;
     time_passed = 0.0;
     impulse_duration = wait_times[wait_times_length - 1] / 500000.0;
     freq = 1.0 / impulse_duration;
@@ -104,6 +105,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
     
     gpioTerminate();
 
+    printf("Max freq: %f\tLast freq: %f\n", 1.0/wait_times[wait_times_length-1]*500000.0, 1.0/nwait_times[nwait_times_length-1]*500000.0);
     Py_RETURN_NONE;
 }
 
