@@ -38,7 +38,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
     {
         return NULL;
     }
-    acc_const /= 2;
+    acc_const *= 2; // acc for rot2 = acc * inertia_ratio * angle / (dur/2)^2 but acc for rot1 = 2 * acc * inertia_ratio * angle / dur^2
     duration /= 2;
 
     float time_passed = 0.0;
