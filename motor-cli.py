@@ -17,6 +17,7 @@ if __name__ == "__main__":
     try:
         motor.setup()
         motor.reset()
+        motor.pigpio_init()
         next_cmd = None
         commands = []
         while True:
@@ -171,24 +172,20 @@ if __name__ == "__main__":
 
                 acceleration = 2 * motor.INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
                 commands.append(with_arg(functools.partial(cmotor.c_generate_signal, motor.PINS["STEP"], acceleration, frequency, duration)))
-            elif cmd[0] == "crotacc2":
+            elif cmd[0] == "protacc":
                 if rotator is not None:
                     print("Motor is already rotating. Use 'freq 0' to stop it first.")
                     continue
-                print("Running crotacc2...")
+                print("Running protacc...")
                 try:
                     radians = float(cmd[1]) if len(cmd) > 1 else math.pi
-                    duration = float(cmd[2]) if len(cmd) > 2 else 1
+                    duration = float(cmd[2]) if len(cmd) > 2 else 1.0
                     frequency = int(cmd[3]) if len(cmd) > 3 else 300
                 except ValueError:
-                    print("Usage: crotacc2 [radians] [seconds] [frequency]")
+                    print("Usage: protacc [radians] [seconds] [frequency]")
                     continue
-                dur= duration/2
-                acceleration = motor.INERTIA_PLATFORM2WHEEL_RATIO*radians/dur/dur
-                end_freq = int(frequency + acceleration * dur * motor.ROTATION_PER_STEP)
-                commands.append(with_arg(functools.partial(cmotor.c_generate_signal, motor.PINS["STEP"], acceleration, frequency, dur)))
-                commands.append(with_arg(functools.partial(cmotor.c_generate_signal, motor.PINS["STEP"], -acceleration, end_freq, dur)))
-
+                acceleration = 2 * motor.INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
+                commands.append(with_arg(functools.partial(motor.pigpio_accelerated_signal, acceleration, frequency, duration)))
             elif cmd[0] == "freq":
                 try:
                     if len(cmd) > 1 and cmd[1] == "-":
@@ -238,3 +235,4 @@ if __name__ == "__main__":
             rotator.stop()
             rotator = None
         GPIO.output(motor.PINS["EN"], GPIO.HIGH)
+        motor.pigpio_cleanup()

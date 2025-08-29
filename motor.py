@@ -5,6 +5,7 @@ import math
 import logging
 from functools import cache
 import pigpio
+import re
 
 FULL_ROTATION = 200
 ROTATION_PER_STEP = 2*math.pi / FULL_ROTATION
@@ -32,6 +33,169 @@ MPINS_SETTINGS = {
     1: (GPIO.LOW, GPIO.LOW, GPIO.LOW)
 }
 LOG = logging.getLogger(__name__)
+
+
+PI = None
+SCRIPT_ID = None
+# about 250 commands per loop
+# with current clock set to 10MHz it is 16 us per loop
+# TODO: can b be negative? YES but then b accuraccy is only 19 bits before comma
+# TODO: is b really lower that 2^20? YES (needs to be shown in paper why)
+PIGPIO_SCRIPT = f"""
+// p0 = a (x.0)
+// p1 = b (x.12)
+// p2 = duration (x.20)
+// p3 = t0 (x.20)
+// p4 = pin
+
+W p4 1
+
+LD v0 p3 // v0 -> sum (x.20)
+LD v1 p3 // v1 -> tx (x.20)
+
+LD v10 500000
+LD v12 v1
+CALL 200
+RL v10 12
+RR v11 20
+LDA v10
+ADD v11
+SUB 8
+STA v3 // v3 = sleep time - 8 us (aproximated time of above calculations)
+SUB 8
+STA v4 // v4 = sleep time - 16 us (aproximated time of one loop below)
+
+JMP 110
+
+TAG 100
+
+W p4 1
+TAG 110
+MICS v3
+W p4 0
+MICS v4
+
+LD v10 p1
+LD v12 v0
+CALL 200 // v10,v11 = b*Sx-1
+LDA p0
+ADD v10 // A,v11 = a+b*Sx-1 (32.32) (no overflow for my data)
+RLA 12
+RR v11 20
+ADD v11 // increasing accuracy (x.12)
+STA v5
+LDA 4096000000 // 2^12 * 1_000_000
+DIV v5 // A = tx (microseconds) (max 16 bits)
+RLA 14
+DIV 15625 // 1_000_000 * 2^-6
+STA v1 // v1 = tx (seconds) (x.20)
+ADD v0
+STA v0 // v0 = sum (x.20)
+
+LD v10 500000
+LD v12 v1
+CALL 200
+RL v10 12
+RR v11 20
+LDA v10
+ADD v11
+STA v3 // v3 = sleep time
+SUB 16
+STA v4 // v4 = sleep time - 16 us (aproximated time of one loop calculations)
+
+LDA v0
+CMP p2
+JM 100
+JMP 999 // End of script
+
+
+TAG 200 // 2 register mul (args: v10, v12)
+
+LDA v10
+AND 65535  // extract lower 16-bits
+STA v11    // save as v11
+RR v10 16 // extract higher 16-bits and move to right
+
+LDA v12
+AND 65535
+STA v13
+RR v12 16 // as above but for argument v12 (higher part), v13 (lower part)
+
+MLT v11
+STA v17 // v17 = v13 * v11 (lower part)
+
+LDA v10
+MLT v12
+STA v14 // v14 = v10 * v12 (higher parts)
+
+LDA v12
+MLT v11
+STA v15 // v15 = v12 * v11 (middle part)
+
+LDA v10
+MLT v13
+STA v16 // v16 = v10 * v13 (middle part)
+
+AND 65535
+STA v18
+LDA v15
+AND 65535
+ADD v18
+STA v18 // v18 = sum of lower parts of middle parts
+RRA 16
+STA v19 // v19 = carry
+RL v18 16
+LD v20 v18
+LD v21 v17
+CALL 300
+LD v11 v20 // v11 = lower part of mul
+RR v16 16
+RR v15 16
+LDA v19
+ADD v21
+ADD v16
+ADD v15
+ADD v14 // will never overflow because result of mul is guaranteed to fit into 64 bits
+STA v10 // v10 = higher part of mul
+
+RET
+
+
+TAG 300 // ADD with carry (args: v20, v21)
+
+LD v22 v20
+LD v23 v21
+RR v22 31
+RR v23 31
+RL v20 1
+RR v20 1
+RL v21 1
+RR v21 1 // extract MSB from args
+
+LDA v20
+ADD v21
+STA v20 // Add lower part (without MSB)
+RRA 31
+ADD v22
+ADD v23 
+STA v21 // v21 = Summed MSBs and carry
+RLA 31
+STA v22
+LDA v20
+RLA 1
+RRA 1
+ADD v22
+STA v20 // v20 = Result
+RR v21 1 // v21 = carry
+
+RET
+
+
+TAG 999
+"""
+PIGPIO_SCRIPT = re.sub(r"//.*","", PIGPIO_SCRIPT)
+PIGPIO_SCRIPT = re.sub(r"\s+"," ", PIGPIO_SCRIPT)
+PIGPIO_SCRIPT = PIGPIO_SCRIPT.strip().encode()
 
 def setup():
     GPIO.setmode(GPIO.BCM)
@@ -111,103 +275,34 @@ def accelerated_impulse_durations(acceleration, duration=1, t0=1/100):
     """Generate an accelerated sine wave for the given frequency and duration."""
     return accelerated_impulse_durations_with_cond(acceleration, t0, lambda durations: sum(durations) < duration)
 
-def pigpio_accelerated_signal(acceleration, start_frequency, duration):
+def pigpio_init():
+    global PI, SCRIPT_ID
+    PI = pigpio.pi()
+    PI.hardware_clock(4, 10_000_000)
+    SCRIPT_ID = PI.store_script(PIGPIO_SCRIPT)
+
+    return PI
+
+def pigpio_cleanup():
+    global PI, SCRIPT_ID
+    if PI is not None:
+        if SCRIPT_ID is not None:
+            PI.stop_script(SCRIPT_ID)
+            PI.delete_script(SCRIPT_ID)
+            SCRIPT_ID = None
+        PI.stop()
+        PI = None
+
+def pigpio_accelerated_signal(acceleration: float, start_frequency: int, duration: float):
     acceleration_constant = acceleration / ROTATION_PER_STEP / get_step_resolution()
 
-    a = start_frequency
-    b= int(round(acceleration_constant*10, 1)*10)
+    a = start_frequency # x.0
+    b = int(acceleration_constant * 4096)  # x.12
+    duration = int(duration * 1048576)  # x.20
+    t0 = int(1/start_frequency * 1048576)  # x.20
 
-    pi = pigpio.pi()
-    pi.hardware_clock(4, 10_000_000)
-
-    script = f"""
-        LD p0 {b}
-        LD p5 {a}
-        LD p6 {PINS["STEP"]}
-        LD p1 {int(duration*10**6)}
-        LD p2 {int(1/start_frequency*10**6)}
-        LD p3 1000
-        LD p4 1000000000
-        LD v0 p2
-        LD v1 p2
-        TAG 100
-        LDA v1
-        DIV 2
-        STA v3
-
-        MICS v3
-        W p6 1
-        MICS v3
-        W p6 0
-
-        PUSH p0
-        PUSH v0
-        CALL 200
-        POPA
-        MLT 10000000
-
-        ADD p5
-
-        STA v2
-        LDA v1
-        DIV v2
-        STA v1
-        ADD v0
-        STA v0
-        CMP p1
-        JM 100
-        JMP 999
-
-        TAG 200
-        POPA
-        POP v10
-        POP v12
-        PUSHA
-
-        LDA v10
-        AND 65535
-        STA v11
-        LDA v10
-        AND 4294901760
-        RRA 16
-        STA v10
-
-        LDA v12
-        AND 65535
-        STA v13
-        LDA v12
-        AND 4294901760
-        RRA 16
-        STA v12
-
-        MLT v10
-        STA v14
-
-        LDA v12
-        MLT v11
-        RRA 16
-        AND 65535
-        ADD v14
-        STA v14
-
-        LDA v10
-        MLT v13
-        RRA 16
-        AND 65535
-        ADD v14
-        STA v14
-
-        POPA
-        PUSH v14
-        PUSHA
-        RET
-
-
-        TAG 999
-    """
-    pi.store_script(
-        f"".encode()
-    )
+    PI.run_script(SCRIPT_ID, [a, b, duration, t0, PINS["STEP"]])
+    print ("Test to check if run_script is blocking operation.")
 
 def rotate_platform(radians, duration=1, start_frequency=100):
     acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
