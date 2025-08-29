@@ -27,6 +27,8 @@ import math
 import types
 import matplotlib.pyplot as plt
 
+def sum_times(times):
+    return [sum(times[:i+1]) for i in range(len(times))]
 
 def test_negation_of_accelerated_impulse():
     """Test the accelerated impulse durations generator."""
@@ -35,12 +37,9 @@ def test_negation_of_accelerated_impulse():
     impulses = accelerated_impulse_durations(acceleration, duration, 1/100)
     n_impulses = accelerated_impulse_durations(-acceleration, duration, impulses[-1])
 
-    def sum_times(times):
-        return [sum(times[:i+1]) for i in range(len(times))]
-
     r_impulses = list(reversed(impulses))
     plt.plot(impulses, label="acceleration")
-    plt.xscale("log")
+    # plt.xscale("log")
     # plt.plot(sum_times(n_impulses), n_impulses, label="deceleration")
     plt.xlabel("Cumulative time (s)")
     plt.ylabel("Impulse duration (s)")
@@ -124,5 +123,66 @@ def test_rotate_platform3_calculations():
     print(f"{dur=} {duration/2=}")
     print(f"All summed: {(sum(wait_times) + sum(negated_wait_times) + sum(sum(pwts) for pwts in part_wait_times) + sum(sum(pwts) for pwts in negated_part_wait_times))*2:.6f} s")
 
-logging.basicConfig(level=logging.DEBUG)
-test_negation_of_accelerated_impulse()
+def test_new_impulse_duration_formula():
+    duration = 1
+    radians = math.pi
+    acceleration = 2* INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
+    t0 = 1/300
+
+    a = 300
+    b = acceleration/ROTATION_PER_STEP/get_step_resolution()
+    a1 = (-b*t0*t0)/(a+b*t0)
+    k = (1/(a+b*(2*t0+a1)) - t0 - a1)/a1
+
+    impulses = [t0]
+    t_sum = t0
+    ax = a1
+    tx = t0 + ax
+    t_sum += tx
+    impulses.append(tx)
+    while t_sum < duration:
+        ax *= k
+        tx += ax
+        impulses.append(tx)
+        t_sum += tx
+
+
+    impulses2 = accelerated_impulse_durations(acceleration, duration, t0)
+    impulses3 = [t0]
+    t_sum = t0
+    while t_sum < duration:
+        tx = 1/(a+b*t_sum)
+        impulses3.append(tx)
+        t_sum += tx
+
+    # print(f"{a1=} {impulses_true[1]-impulses_true[0]=}")
+    # a2 = impulses_true[2]-impulses_true[1]
+    # print(f"{k=} {a1*k=} {a2=}")
+    a_n_2 = a1
+    for i in range(2, len(impulses3)):
+        a_n = impulses3[i]-impulses3[i-1]
+        a_n_2 = a_n_2 * k
+        a_n = round(a_n, 6)
+        a_n_2 = round(a_n_2, 6)
+        if a_n != a_n_2:
+            print(f"Discrepancy found ({i}): {a_n=} {a_n_2=}")
+            break
+
+    for i in range(len(impulses2)):
+        im1 = round(impulses2[i], 6)
+        im2 = round(impulses3[i], 6)
+        if im1 != im2:
+            print(f"Discrepancy found (impulses2 vs impulses3) ({i}): {im1=} {im2=}")
+
+    plt.plot(impulses, label="tx = tx-1 + ax")
+    plt.plot(impulses2, label="tx = tx-1/(1 + alfa*tx-1/L)")
+    plt.plot(impulses3, label="tx = 1/(a + b*sum_x-1)")
+    plt.xlabel("Cumulative time (s)")
+    plt.ylabel("Impulse frequency (Hz)")
+    plt.title("Accelerated Impulse Frequency")
+    plt.legend()
+    plt.grid()
+    plt.show()
+
+# logging.basicConfig(level=logging.DEBUG)
+test_frequency_grow_over_time()
