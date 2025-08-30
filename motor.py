@@ -297,12 +297,12 @@ def pigpio_accelerated_signal(acceleration: float, start_frequency: int, duratio
     acceleration_constant = acceleration / ROTATION_PER_STEP / get_step_resolution()
 
     a = start_frequency # x.0
-    b = int(acceleration_constant * 4096)  # x.12
-    duration = int(duration * 1048576)  # x.20
-    t0 = int(1/start_frequency * 1048576)  # x.20
+    b = round(acceleration_constant * 4096)  # x.12
+    duration = round(duration * 1048576)  # x.20
+    t0 = round(1/start_frequency * 1048576)  # x.20
 
     PI.run_script(SCRIPT_ID, [a, b, duration, t0, PINS["STEP"]])
-    print ("Test to check if run_script is blocking operation.")
+    # run_script is non-blocking operation.
 
 def rotate_platform(radians, duration=1, start_frequency=100):
     acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration

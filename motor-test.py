@@ -184,5 +184,21 @@ def test_new_impulse_duration_formula():
     plt.grid()
     plt.show()
 
+def test_pigpio_parameters():
+    angle = math.pi
+    duration = 1
+    acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * angle / duration / duration
+    start_frequency = 300
+
+    acceleration_constant = acceleration / ROTATION_PER_STEP / get_step_resolution()
+
+    a = start_frequency # x.0
+    b = round(acceleration_constant * 4096)  # x.12
+    duration = round(duration * 1048576)  # x.20
+    t0 = round(1/start_frequency * 1048576)  # x.20
+
+    print(f"{acceleration=}, {acceleration_constant=}")
+    print(f"{a=}, {b=}, {duration=}, {t0=}")
+
 # logging.basicConfig(level=logging.DEBUG)
-test_frequency_grow_over_time()
+test_pigpio_parameters()
