@@ -127,7 +127,7 @@ STA v10 // v10 = higher 16-bits
 LDA v12
 AND 65535
 STA v13
-LDA v10
+LDA v12
 RRA 16
 AND 65535
 STA v12 // as above but for argument v12 (higher part), v13 (lower part)
