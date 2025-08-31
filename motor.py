@@ -57,9 +57,10 @@ LD v10 500000
 LD v12 v1
 CALL 200
 RL v10 12
-RR v11 20
-LDA v10
-ADD v11
+LDA v11
+RRA 20
+AND 4095
+ADD v10
 SUB 8
 STA v3 // v3 = sleep time - 8 us (aproximated time of above calculations)
 SUB 8
@@ -81,8 +82,11 @@ CALL 200 // v10,v11 = b*Sx-1
 LDA p0
 ADD v10 // A,v11 = a+b*Sx-1 (32.32) (no overflow for my data)
 RLA 12
-RR v11 20
-ADD v11 // increasing accuracy (x.12)
+STA v5
+LDA v11
+RRA 20
+AND 4095
+ADD v5 // increasing accuracy (x.12)
 STA v5
 LDA 4096000000 // 2^12 * 1_000_000
 DIV v5 // A = tx (microseconds) (max 16 bits)
@@ -96,9 +100,10 @@ LD v10 500000
 LD v12 v1
 CALL 200
 RL v10 12
-RR v11 20
-LDA v10
-ADD v11
+LDA v11
+RRA 20
+AND 4095
+ADD v10
 STA v3 // v3 = sleep time
 SUB 16
 STA v4 // v4 = sleep time - 16 us (aproximated time of one loop calculations)
@@ -112,14 +117,20 @@ JMP 999 // End of script
 TAG 200 // 2 register mul (args: v10, v12)
 
 LDA v10
-AND 65535  // extract lower 16-bits
-STA v11    // save as v11
-RR v10 16 // extract higher 16-bits and move to right
+AND 65535
+STA v11    // v11 = lower 16-bits
+LDA v10
+RRA 16
+AND 65535
+STA v10 // v10 = higher 16-bits
 
 LDA v12
 AND 65535
 STA v13
-RR v12 16 // as above but for argument v12 (higher part), v13 (lower part)
+LDA v10
+RRA 16
+AND 65535
+STA v12 // as above but for argument v12 (higher part), v13 (lower part)
 
 MLT v11
 STA v17 // v17 = v13 * v11 (lower part)
@@ -149,12 +160,16 @@ LD v20 v18
 LD v21 v17
 CALL 300
 LD v11 v20 // v11 = lower part of mul
-RR v16 16
-RR v15 16
-LDA v19
+LDA v16
+RRA 16
+AND 65535
+STA v16
+LDA v15
+RRA 16
+AND 65535
+ADD v19
 ADD v21
 ADD v16
-ADD v15
 ADD v14 // will never overflow because result of mul is guaranteed to fit into 64 bits
 STA v10 // v10 = higher part of mul
 
@@ -163,10 +178,14 @@ RET
 
 TAG 300 // ADD with carry (args: v20, v21)
 
-LD v22 v20
-LD v23 v21
-RR v22 31
-RR v23 31
+LDA v20
+RRA 31
+AND 1
+STA v22
+LDA v21
+RRA 31
+AND 1
+STA v23
 RL v20 1
 RR v20 1
 RL v21 1
@@ -176,6 +195,7 @@ LDA v20
 ADD v21
 STA v20 // Add lower part (without MSB)
 RRA 31
+AND 1
 ADD v22
 ADD v23 
 STA v21 // v21 = Summed MSBs and carry
