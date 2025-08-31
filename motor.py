@@ -132,12 +132,12 @@ RRA 16
 AND 65535
 STA v12 // as above but for argument v12 (higher part), v13 (lower part)
 
+MLT v10
+STA v14 // v14 = v10 * v12 (higher parts)
+
+LDA v13
 MLT v11
 STA v17 // v17 = v13 * v11 (lower part)
-
-LDA v10
-MLT v12
-STA v14 // v14 = v10 * v12 (higher parts)
 
 LDA v12
 MLT v11
