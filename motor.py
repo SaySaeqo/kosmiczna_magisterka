@@ -53,11 +53,18 @@ W p4 1
 LD v0 p3 // v0 -> sum (x.20)
 LD v1 p3 // v1 -> tx (x.20)
 
-CALL 180
-SUB 8
-STA v3 // v3 = sleep time - 8 us (aproximated time of above calculations)
-SUB 8
-STA v4 // v4 = sleep time - 16 us (aproximated time of one loop below)
+LD v10 500000 
+LD v12 v1
+CALL 200 // v10,v11 = tx * 1_000_000 / 2
+RL v10 12
+LDA v11
+RRA 20
+AND 4095
+ADD v10 // A = total part (x.20 * x.0)
+SUB 9
+STA v3 // v3 = sleep time - 9 us (aproximated time of above calculations)
+SUB 1
+STA v4 // v4 = sleep time - 10 us (aproximated time of one loop below)
 
 JMP 110
 
@@ -81,37 +88,23 @@ RRA 20
 AND 4095
 ADD v5 // increasing accuracy (x.12)
 STA v5
-LDA 4096000000 // 2^12 * 1_000_000
-DIV v5 // A = tx (microseconds) (max 16 bits)
-RLA 14
-DIV 15625 // 1_000_000 * 2^-6
+LDA 2048000000 // 2^12 * 500_000
+DIV v5 // A = tx/2 (microseconds) (max 11 bits) -> sleep time
+STA v3 // v3 = sleep time
+SUB 10
+STA v4 // v4 = sleep time - 10 us (aproximated time of one loop calculations)
+ADD 10
+
+RLA 15
+DIV 15625 // 500_000 * 2^-5
 STA v1 // v1 = tx (seconds) (x.20)
+
 ADD v0
 STA v0 // v0 = sum (x.20)
 
-CALL 180
-STA v3 // v3 = sleep time
-SUB 16
-STA v4 // v4 = sleep time - 16 us (aproximated time of one loop calculations)
-
-LDA v0
 CMP p2
 JM 100
 JMP 999 // End of script
-
-
-TAG 180 // get sleep time to A
-
-LD v10 500000
-LD v12 v1
-CALL 200 // v10,v11 = tx * 1_000_000 / 2
-RL v10 12
-LDA v11
-RRA 20
-AND 4095
-ADD v10 // A = total part (x.20 * x.0)
-
-RET
 
 
 TAG 200 // 2 register mul (args: v10, v12)
