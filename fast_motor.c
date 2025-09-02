@@ -150,17 +150,19 @@ static PyObject* generate_signal3(PyObject* self, PyObject* args)
     {
         return NULL;
     }
+    int calculations_start;
+    useconds_t sleep_time, calculations_time;
 
     Py_BEGIN_ALLOW_THREADS
 
     float time_passed = 0.0;
     float impulse_duration = 1.0 / freq;
 
-    int calculations_start = gpioTick();
-    useconds_t sleep_time = (useconds_t)(impulse_duration * 500000);
+    calculations_start = gpioTick();
+    sleep_time = (useconds_t)(impulse_duration * 500000);
     time_passed += impulse_duration;
     impulse_duration = 1.0 / (freq + acc_const * time_passed);
-    useconds_t calculations_time = (useconds_t)(gpioTick() - calculations_start);
+    calculations_time = (useconds_t)(gpioTick() - calculations_start);
 
     while (time_passed < duration + impulse_duration)
     {
