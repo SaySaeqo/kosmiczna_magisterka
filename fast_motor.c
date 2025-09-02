@@ -131,7 +131,6 @@ static PyObject* generate_signal2(PyObject* self, PyObject* args)
     Py_BEGIN_ALLOW_THREADS
     for (int i = 0; i < wait_times_length; i++)
     {
-        start_loop = gpioTick();
         gpioWrite(pin, 1);
         gpioDelay(wait_times[i]);
         gpioWrite(pin, 0);
