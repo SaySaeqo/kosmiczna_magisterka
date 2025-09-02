@@ -132,12 +132,9 @@ static PyObject* generate_signal2(PyObject* self, PyObject* args)
     for (int i = 0; i < wait_times_length; i++)
     {
         gpioWrite(pin, 1);
-        gpioDelay(wait_times[i]);
+        gpioSleep(PI_TIME_RELATIVE, 0, wait_times[i]);
         gpioWrite(pin, 0);
-        gpioDelay(wait_times[i]);
-        // end_loop = gpioTick();
-        // printf("Loop duration: %d microseconds\n", end_loop - start_loop);
-        // printf("Impulse duration: %d microseconds\n", sleep_time * 2);
+        gpioSleep(PI_TIME_RELATIVE, 0, wait_times[i]);
     }
     Py_END_ALLOW_THREADS
 
@@ -172,9 +169,9 @@ static PyObject* generate_signal3(PyObject* self, PyObject* args)
     while (time_passed < duration + impulse_duration)
     {
         gpioWrite(pin, 1);
-        gpioDelay(sleep_time - calculations_time);
+        gpioSleep(PI_TIME_RELATIVE, 0, sleep_time - calculations_time);
         gpioWrite(pin, 0);
-        gpioDelay(sleep_time);
+        gpioSleep(PI_TIME_RELATIVE, 0, sleep_time);
         sleep_time = (useconds_t)(impulse_duration * 500000);
         time_passed += impulse_duration;
         impulse_duration = 1.0 / (freq + acc_const * time_passed);
