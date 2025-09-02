@@ -123,10 +123,15 @@ static PyObject* generate_signal2(PyObject* self, PyObject* args)
 
     int calculations_time = gpioTick() - calculations_start;
 
+    int write_start = gpioTick();
+    gpioWrite(pin, 1);
+    gpioWrite(pin, 0);
+    int write_time = gpioTick() - write_start;
+
     Py_BEGIN_ALLOW_THREADS
     for (int i = 0; i < wait_times_length; i++)
     {
-        // start_loop = gpioTick();
+        start_loop = gpioTick();
         gpioWrite(pin, 1);
         gpioDelay(wait_times[i]);
         gpioWrite(pin, 0);
@@ -137,7 +142,7 @@ static PyObject* generate_signal2(PyObject* self, PyObject* args)
     }
     Py_END_ALLOW_THREADS
 
-    printf("Max freq: %f\tLast wait time: %d\n", 1.0/wait_times[wait_times_length-1]*500000.0, wait_times[wait_times_length-1]);
+    printf("Max freq: %f\tLast wait time: %d\t Writing time: %d us\n", 1.0/wait_times[wait_times_length-1]*500000.0, wait_times[wait_times_length-1], write_time);
     Py_RETURN_NONE;
 }
 
