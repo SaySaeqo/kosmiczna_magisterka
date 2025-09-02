@@ -136,7 +136,7 @@ static PyObject* generate_signal2(PyObject* self, PyObject* args)
     }
     Py_END_ALLOW_THREADS
 
-    printf("Max freq: %f\tLast wait time: %f\n", 1.0/wait_times[wait_times_length-1]*500000.0, wait_times[wait_times_length-1]);
+    printf("Max freq: %f\tLast wait time: %d\n", 1.0/wait_times[wait_times_length-1]*500000.0, wait_times[wait_times_length-1]);
     Py_RETURN_NONE;
 }
 

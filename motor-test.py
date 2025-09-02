@@ -26,6 +26,7 @@ from motor import *
 import math
 import types
 import matplotlib.pyplot as plt
+import time
 
 def sum_times(times):
     return [sum(times[:i+1]) for i in range(len(times))]
@@ -53,7 +54,10 @@ def test_acceleration_of_accelerated_impulse():
     duration = 1
     acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * (math.pi) / duration / duration
     start_impulse = 1/300
+    start = time.perf_counter()
     impulses = accelerated_impulse_durations(acceleration, duration, start_impulse)
+    end = time.perf_counter()
+    print(f"Impulse generation took {end - start:.6f} seconds")
 
     # Speeds of the flywheel
     final_speed = (ROTATION_PER_STEP * get_step_resolution()) / (impulses[-1])
@@ -199,6 +203,7 @@ def test_pigpio_parameters():
 
     print(f"{acceleration=}, {acceleration_constant=}")
     print(f"{a=}, {b=}, {duration=}, {t0=}")
+    print(f"Last impulse duration: {accelerated_impulse_durations(acceleration, 1, 1/start_frequency)[-1] * 1000_000} us")
 
-# logging.basicConfig(level=logging.DEBUG)
-test_pigpio_parameters()
+logging.basicConfig(level=logging.DEBUG)
+test_acceleration_of_accelerated_impulse()

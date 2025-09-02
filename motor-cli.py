@@ -17,7 +17,8 @@ if __name__ == "__main__":
     try:
         motor.setup()
         motor.reset()
-        motor.pigpio_init()
+        GPIO.output(motor.MPINS, GPIO.HIGH)  # Set 1/16 step
+        #motor.pigpio_init()
         next_cmd = None
         commands = []
         while True:
@@ -265,4 +266,4 @@ if __name__ == "__main__":
             rotator.stop()
             rotator = None
         GPIO.output(motor.PINS["EN"], GPIO.HIGH)
-        motor.pigpio_cleanup()
+        #motor.pigpio_cleanup()
