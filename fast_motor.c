@@ -17,6 +17,7 @@ fast_motor_module_exec(PyObject *m)
 {
     ASSERT_SUCCESS(gpioInitialise(), "Failed to initialize PIGPIO");
     ASSERT_SUCCESS(Py_AtExit(fast_motor_atexit), "Failed to register PIGPIO exit handler");
+    ASSERT_SUCCESS(gpioSetMode(24, PI_OUTPUT), "Failed to set GPIO mode");
     return 0;
 }
 
