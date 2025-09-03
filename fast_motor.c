@@ -20,7 +20,7 @@
         ts.tv_nsec = rem.tv_nsec;                          \
     }
 #define STEP_PIN 24
-#define ROTATION_PER_STEP (2*M_PI)/(200*16)
+#define ROTATION_PER_STEP (M_PI/1600)
 #define CALCULATION_TIME_NS 260
 #define WRITING_TIME_NS 1100
 #define INIT_TIME_NS 6000 // 3000-80000 ns
