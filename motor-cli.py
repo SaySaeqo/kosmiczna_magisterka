@@ -158,6 +158,21 @@ if __name__ == "__main__":
                     continue
 
                 commands.append(with_arg(functools.partial(motor.rotate_platform3, radians, seconds)))
+            elif cmd[0] == "crotacc_p":
+                if rotator is not None:
+                    print("Motor is already rotating. Use 'freq 0' to stop it first.")
+                    continue
+                print("Running crotacc_p...")
+                try:
+                    radians = float(cmd[1]) if len(cmd) > 1 else math.pi
+                    duration = float(cmd[2]) if len(cmd) > 2 else 1
+                    frequency = int(cmd[3]) if len(cmd) > 3 else 300
+                except ValueError:
+                    print("Usage: crotacc_p [radians] [seconds] [frequency]")
+                    continue
+
+                acceleration = 2 * motor.INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
+                commands.append(with_arg(functools.partial(cmotor.c_generate_signal_prep, acceleration, frequency, duration)))
             elif cmd[0] == "crotacc":
                 if rotator is not None:
                     print("Motor is already rotating. Use 'freq 0' to stop it first.")
@@ -172,37 +187,7 @@ if __name__ == "__main__":
                     continue
 
                 acceleration = 2 * motor.INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
-                commands.append(with_arg(functools.partial(cmotor.c_generate_signal, motor.PINS["STEP"], acceleration, frequency, duration)))
-            elif cmd[0] == "crotacc2":
-                if rotator is not None:
-                    print("Motor is already rotating. Use 'freq 0' to stop it first.")
-                    continue
-                print("Running crotacc2...")
-                try:
-                    radians = float(cmd[1]) if len(cmd) > 1 else math.pi
-                    duration = float(cmd[2]) if len(cmd) > 2 else 1
-                    frequency = int(cmd[3]) if len(cmd) > 3 else 300
-                except ValueError:
-                    print("Usage: crotacc2 [radians] [seconds] [frequency]")
-                    continue
-
-                acceleration = 2 * motor.INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
-                commands.append(with_arg(functools.partial(cmotor.c_generate_signal2, motor.PINS["STEP"], acceleration, frequency, duration)))
-            elif cmd[0] == "crotacc3":
-                if rotator is not None:
-                    print("Motor is already rotating. Use 'freq 0' to stop it first.")
-                    continue
-                print("Running crotacc3...")
-                try:
-                    radians = float(cmd[1]) if len(cmd) > 1 else math.pi
-                    duration = float(cmd[2]) if len(cmd) > 2 else 1
-                    frequency = int(cmd[3]) if len(cmd) > 3 else 300
-                except ValueError:
-                    print("Usage: crotacc3 [radians] [seconds] [frequency]")
-                    continue
-
-                acceleration = 2 * motor.INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
-                commands.append(with_arg(functools.partial(cmotor.c_generate_signal3, motor.PINS["STEP"], acceleration, frequency, duration)))
+                commands.append(with_arg(functools.partial(cmotor.c_generate_signal, acceleration, frequency, duration)))
             elif cmd[0] == "protacc":
                 if rotator is not None:
                     print("Motor is already rotating. Use 'freq 0' to stop it first.")
