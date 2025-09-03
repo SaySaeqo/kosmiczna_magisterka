@@ -25,9 +25,8 @@ if __name__ == "__main__":
             # Command chaining and input handling
             if not next_cmd and commands:
                 last_result = None
-                for command in commands:
-                    last_result = command(last_result)
-                commands.clear()
+                while commands:
+                    last_result = commands.pop(0)(last_result)
             if next_cmd:
                 cmd = next_cmd
                 next_cmd = None
