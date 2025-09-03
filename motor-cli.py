@@ -5,7 +5,7 @@ import motor
 import math
 import logging
 import functools
-import cmotor
+import kosmiczna_magisterka.fast_motor as cmotor
 
 rotator = None
 
@@ -172,7 +172,7 @@ if __name__ == "__main__":
                     continue
 
                 acceleration = 2 * motor.INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
-                commands.append(with_arg(functools.partial(cmotor.c_generate_signal_prep, acceleration, frequency, duration)))
+                commands.append(with_arg(functools.partial(cmotor.generate_signal_prep, acceleration, frequency, duration)))
             elif cmd[0] == "crotacc":
                 if rotator is not None:
                     print("Motor is already rotating. Use 'freq 0' to stop it first.")
@@ -187,7 +187,7 @@ if __name__ == "__main__":
                     continue
 
                 acceleration = 2 * motor.INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration
-                commands.append(with_arg(functools.partial(cmotor.c_generate_signal, acceleration, frequency, duration)))
+                commands.append(with_arg(functools.partial(cmotor.generate_signal, acceleration, frequency, duration)))
             elif cmd[0] == "protacc":
                 if rotator is not None:
                     print("Motor is already rotating. Use 'freq 0' to stop it first.")

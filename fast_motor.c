@@ -2,6 +2,8 @@
 #include <Python.h>
 #include <pigpio.h>
 #include <stdio.h>
+#include <time.h>
+#include <math.h>
 #define ASSERT_SUCCESS(status, msg) \
     if (status < 0) { \
         PyErr_SetString(PyExc_Exception, msg); \
@@ -18,9 +20,10 @@
         ts.tv_nsec = rem.tv_nsec;                          \
     }
 #define STEP_PIN 24
+#define ROTATION_PER_STEP (2*M_PI)/(200*16)
 #define CALCULATION_TIME_NS 260
 #define WRITING_TIME_NS 1100
-#define INIT_TIME_NS 6000
+#define INIT_TIME_NS 6000 // 3000-80000 ns
 #define CALCULATION_TIME_ALL_NS 350000
 #define TIME_CALC_START \
     struct timespec start, end; \
@@ -47,19 +50,19 @@ fast_motor_module_exec(PyObject *m)
 
 static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
 {
-    float acc_const, duration;
+    float acceleration, duration;
     int freq;
-    if (!PyArg_ParseTuple(args, "fif", &acc_const, &freq, &duration))
+    if (!PyArg_ParseTuple(args, "fif", &acceleration, &freq, &duration))
     {
         return NULL;
     }
-
 
     Py_BEGIN_ALLOW_THREADS
 
     SLEEP_PREP
     float time_passed = 0.0;
     float impulse_duration = 1.0 / freq;
+    float acc_const = acceleration / ROTATION_PER_STEP;
 
     int wait_times[20000];
     int wait_times_length = 0;
@@ -88,10 +91,17 @@ static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
 
 static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x more rotation
 {
-    TIME_CALC_START
-    float acc_const, duration;
+    gpioWrite(STEP_PIN, 1);
+
+    // Init time calculation start
+    struct timespec start, end;
+    int init_time;
+    clock_gettime(CLOCK_MONOTONIC, &start);
+    // ----
+
+    float duration, acceleration;
     int freq;
-    if (!PyArg_ParseTuple(args, "fif", &acc_const, &freq, &duration))
+    if (!PyArg_ParseTuple(args, "fif", &acceleration, &freq, &duration))
     {
         return NULL;
     }
@@ -101,20 +111,30 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     SLEEP_PREP
     float time_passed = 0.0;
     float impulse_duration = 1.0 / freq;
-    TIME_CALC_END
+    float acc_const = acceleration / ROTATION_PER_STEP;
+
+    // Init time calculation end
+    clock_gettime(CLOCK_MONOTONIC, &end);
+    init_time = (end.tv_sec - start.tv_sec) * 1000000000 + (end.tv_nsec - start.tv_nsec);
+    // ----
+
+    int sleep_time = (int)(impulse_duration * 500000000);
+    time_passed += impulse_duration;
+    impulse_duration = 1.0 / (freq + acc_const * time_passed);
+    SLEEP(sleep_time-WRITING_TIME_NS-CALCULATION_TIME_NS-init_time)
+    gpioWrite(STEP_PIN, 0);
 
     while (time_passed < duration)
     {
-        int sleep_time = (int)(impulse_duration * 500000000);
+        SLEEP(sleep_time-WRITING_TIME_NS-CALCULATION_TIME_NS)
+        sleep_time = (int)(impulse_duration * 500000000);
         time_passed += impulse_duration;
         impulse_duration = 1.0 / (freq + acc_const * time_passed);
         gpioWrite(STEP_PIN, 1);
         SLEEP(sleep_time-WRITING_TIME_NS)
         gpioWrite(STEP_PIN, 0);
-        SLEEP(sleep_time-WRITING_TIME_NS-CALCULATION_TIME_NS)
     }
     Py_END_ALLOW_THREADS
-    printf("Init time: %d ns\n", elapsed);
 
     Py_RETURN_NONE;
 }
