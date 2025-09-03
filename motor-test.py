@@ -27,6 +27,7 @@ import math
 import types
 import matplotlib.pyplot as plt
 import time
+import pprint
 
 def sum_times(times):
     return [sum(times[:i+1]) for i in range(len(times))]
@@ -205,5 +206,25 @@ def test_pigpio_parameters():
     print(f"{a=}, {b=}, {duration=}, {t0=}")
     print(f"Last impulse duration: {accelerated_impulse_durations(acceleration, 1, 1/start_frequency)[-1] * 1000_000} us")
 
+def test_accelerated_impulses_unique_values():
+    angle = math.pi
+    duration = 1
+    acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * angle / duration / duration
+    start_frequency = 300
+
+    impulses = accelerated_impulse_durations(acceleration, duration, 1/start_frequency)
+    impulses_len = len(impulses)
+    impulses = map(lambda x: int(x * 1000_000), impulses)
+    unique_impulses = []
+    last_impulse = 1
+    for idx, impulse in enumerate(impulses):
+        if impulse != last_impulse:
+            unique_impulses.append((idx, impulse))
+            last_impulse = impulse
+    
+    pprint.pprint(unique_impulses)
+    print(f"Number of unique impulses: {len(unique_impulses)}")
+    print(f"Total impulses: {impulses_len}")
+
 logging.basicConfig(level=logging.DEBUG)
-test_acceleration_of_accelerated_impulse()
+test_accelerated_impulses_unique_values()
