@@ -7,7 +7,18 @@
         PyErr_SetString(PyExc_Exception, msg); \
         return -1; \
     }
-    
+#define SLEEP_PREP \
+    struct timespec ts, rem; \
+    ts.tv_sec = 0;
+#define SLEEP(nanoseconds) \
+    ts.tv_nsec = nanoseconds; \
+    while (clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, &rem)) \
+    {                                                      \
+        ts.tv_sec  = rem.tv_sec;                           \
+        ts.tv_nsec = rem.tv_nsec;                          \
+    }
+
+
 static void fast_motor_atexit(void) {
     gpioTerminate();
 }
@@ -97,7 +108,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args)
 
 static PyObject* generate_signal2(PyObject* self, PyObject* args)
 {
-    int calculations_start = gpioTick();
+    struct timespec calculations_start, calculations_end;
     int pin;
     float acc_const, duration;
     int freq;
@@ -106,6 +117,7 @@ static PyObject* generate_signal2(PyObject* self, PyObject* args)
         return NULL;
     }
 
+    clock_gettime(CLOCK_MONOTONIC, &calculations_start);
     float time_passed = 0.0;
     float impulse_duration = 1.0 / freq;
 
@@ -120,13 +132,17 @@ static PyObject* generate_signal2(PyObject* self, PyObject* args)
 
         wait_times[wait_times_length++] = sleep_time;
     }
+    clock_gettime(CLOCK_MONOTONIC, &calculations_end);
+    int calculations_time = (calculations_end.tv_sec - calculations_start.tv_sec) * 1000000000 +
+                            (calculations_end.tv_nsec - calculations_start.tv_nsec);
 
-    int calculations_time = gpioTick() - calculations_start;
-
-    int write_start = gpioTick();
+    struct timespec write_start, write_end;
+    clock_gettime(CLOCK_MONOTONIC, &write_start);
     gpioWrite(pin, 1);
     gpioWrite(pin, 0);
-    int write_time = gpioTick() - write_start;
+    clock_gettime(CLOCK_MONOTONIC, &write_end);
+    int write_time = (write_end.tv_sec - write_start.tv_sec) * 1000000000 +
+                     (write_end.tv_nsec - write_start.tv_nsec);
 
     Py_BEGIN_ALLOW_THREADS
     for (int i = 0; i < wait_times_length; i++)
@@ -138,13 +154,14 @@ static PyObject* generate_signal2(PyObject* self, PyObject* args)
     }
     Py_END_ALLOW_THREADS
 
-    printf("Max freq: %f\tLast wait time: %d\t Writing time: %d us\n", 1.0/wait_times[wait_times_length-1]*500000.0, wait_times[wait_times_length-1], write_time);
+    printf("Max freq: %f\tLast wait time: %d\tWriting time: %d ns\tCalculations time: %d ns\n", 1.0/wait_times[wait_times_length-1]*500000.0, wait_times[wait_times_length-1], write_time, calculations_time);
     Py_RETURN_NONE;
 }
 
-static PyObject* generate_signal3(PyObject* self, PyObject* args)
+static PyObject* generate_signal3(PyObject* self, PyObject* args) // makes 2x more rotation
 {
-    int init_start = gpioTick();
+    struct timespec init_start;
+    clock_gettime(CLOCK_MONOTONIC, &init_start);
     int pin;
     float acc_const, duration;
     int freq;
@@ -152,33 +169,38 @@ static PyObject* generate_signal3(PyObject* self, PyObject* args)
     {
         return NULL;
     }
-    int calculations_start;
-    useconds_t sleep_time, calculations_time;
+    struct timespec calculations_start, calculations_end;
+    int sleep_time, calculations_time, init_time; // nanoseconds
+    SLEEP_PREP
 
     Py_BEGIN_ALLOW_THREADS
 
     float time_passed = 0.0;
     float impulse_duration = 1.0 / freq;
 
-    calculations_start = gpioTick();
-    sleep_time = (useconds_t)(impulse_duration * 500000);
+    clock_gettime(CLOCK_MONOTONIC, &calculations_start); 
+    sleep_time = (int)(impulse_duration * 500000000); // nanoseconds
     time_passed += impulse_duration;
     impulse_duration = 1.0 / (freq + acc_const * time_passed);
-    calculations_time = (useconds_t)(gpioTick() - calculations_start);
+    clock_gettime(CLOCK_MONOTONIC, &calculations_end);
+    calculations_time = (calculations_end.tv_sec - calculations_start.tv_sec) * 1000000000 +
+                        (calculations_end.tv_nsec - calculations_start.tv_nsec);
+    init_time = (calculations_start.tv_sec - init_start.tv_sec) * 1000000000 +
+                (calculations_start.tv_nsec - init_start.tv_nsec);
 
     while (time_passed < duration + impulse_duration)
     {
         gpioWrite(pin, 1);
-        gpioSleep(PI_TIME_RELATIVE, 0, sleep_time - calculations_time);
+        SLEEP(sleep_time - calculations_time)
         gpioWrite(pin, 0);
-        gpioSleep(PI_TIME_RELATIVE, 0, sleep_time);
-        sleep_time = (useconds_t)(impulse_duration * 500000);
+        SLEEP(sleep_time)
+        sleep_time = (int)(impulse_duration * 500000000);
         time_passed += impulse_duration;
         impulse_duration = 1.0 / (freq + acc_const * time_passed);
     }
     Py_END_ALLOW_THREADS
 
-    printf("Calculations time: %d us\tInit time: %d us\tLast impulse duration: %d us\n", calculations_time, calculations_start - init_start, sleep_time*2);
+    printf("Calculations time: %d ns\tInit time: %d ns\tLast impulse duration: %d ns\n", calculations_time, init_time, sleep_time*2);
 
     Py_RETURN_NONE;
 }
