@@ -6,14 +6,19 @@ import math
 import time
 import logging
 import threading
+import kosmiczna_magisterka.fast_motor as cmotor
 
+def rotate_platform(angle):
+    GPIO.output(motor.MPINS, GPIO.HIGH)
+    acceleration = 2*motor.INERTIA_PLATFORM2WHEEL_RATIO*angle 
+    cmotor.generate_signal(acceleration,300,1)
 
 def calibrate_inertia_ratio():
     unit, tenths, hundredths = 11, 0.9, 0.09
 
     for u in range(1, 11):
         motor.INERTIA_PLATFORM2WHEEL_RATIO = u
-        motor.rotate_platform(math.pi)
+        rotate_platform(math.pi)
         next_step = input(f"Is {u} to much? (y/n): ").strip().lower()
         if next_step == "y":
             unit = u - 1
@@ -22,7 +27,7 @@ def calibrate_inertia_ratio():
     for t in range(1, 10):
         t = t / 10.0
         motor.INERTIA_PLATFORM2WHEEL_RATIO = unit + t
-        motor.rotate_platform(math.pi)
+        rotate_platform(math.pi)
         next_step = input(f"Is {unit + t} to much? (y/n): ").strip().lower()
         if next_step == "y":
             tenths = t - 0.1
@@ -31,7 +36,7 @@ def calibrate_inertia_ratio():
     for h in range(1, 10):
         h = h / 100.0
         motor.INERTIA_PLATFORM2WHEEL_RATIO = unit + tenths + h
-        motor.rotate_platform(math.pi)
+        rotate_platform(math.pi)
         next_step = input(f"Is {unit + tenths + h} to much? (y/n): ").strip().lower()
         if next_step == "y":
             hundredths = h - 0.01
@@ -70,7 +75,7 @@ if __name__ == "__main__":
         motor.reset()
         logging.basicConfig(level=logging.DEBUG, filemode="w", filename="motor-calibration.log")
 
-        CALLIBRATION_TYPE = 2
+        CALLIBRATION_TYPE = 1
 
         if CALLIBRATION_TYPE == 1:
             calibrate_inertia_ratio()
