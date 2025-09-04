@@ -211,7 +211,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 });
 
                 sendRotationInterval = setInterval(() => {
-                    if (lastPoseOrientation && button4Pressed) {
+                    if (lastPoseOrientation) {
                         fetch('/rotate', {
                             method: 'POST',
                             body: JSON.stringify({ orientation: lastPoseOrientation.toJSON() }),

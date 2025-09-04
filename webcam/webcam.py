@@ -9,6 +9,8 @@ from typing import Optional
 import math
 import time
 import motor
+import kosmiczna_magisterka.fast_motor as cmotor
+import multiprocessing as mp
 
 from aiohttp import web
 from aiortc import (
@@ -25,6 +27,28 @@ pcs = set()
 relay = None
 webcam = None
 disable_motor = True
+queue = mp.Queue()
+process = None
+
+def cmotor_worker(q):
+    while True:
+        task = q.get()
+        if task is None:
+            break
+        dir, acceleration, start_freq, duration = task
+        motor.GPIO.output(motor.PINS["EN"], motor.GPIO.LOW)  # Enable the motor
+        motor.GPIO.output(motor.PINS["DIR"], dir)
+        cmotor.generate_signal(acceleration, start_freq, duration)
+        motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the motor
+
+def cmotor_worker_mock(q):
+    while True:
+        task = q.get()
+        if task is None:
+            break
+        dir, acceleration, start_freq, duration = task
+        print(f"Mock motor: dir={dir} acc={acceleration:.2f} start_freq={start_freq} duration={duration:.2f}")
+        time.sleep(duration + 0.1)
 
 
 def create_local_tracks(
@@ -99,37 +123,75 @@ def relative_y_axis_rotation(q_from: dict, q_to: dict) -> float:
     }
     return y_axis_rotation(q)
 
-current_orientation = { "x": 0, "y": 0, "z": 0, "w": 1 }
+last_orientation = { "x": 0, "y": 0, "z": 0, "w": 1 }
 last_rot_time = time.perf_counter()
-
+last_speed = 0.0
+last_frequency = 0.0
+MIN_FREQ = 300
+MIN_SPEED = MIN_FREQ*motor.ROTATION_PER_STEP * motor.get_step_resolution()
 
 
 async def rotate(request: web.Request) -> web.Response:
+    # Get parameters
     params = await request.json()
-    orientation = params["orientation"]
-    global current_orientation, last_rot_time
+    current_orientation = params["orientation"]
+
+    # Calculate time_diff, angle and save new position
+    global last_orientation, last_rot_time, last_speed, last_frequency
     now = time.perf_counter()
-    if now - last_rot_time < 1.0:  # Prevent too frequent updates
+    time_diff = now - last_rot_time
+    if time_diff < 0.1:  # Prevent too frequent updates
         return web.Response(status=200)
     else:
         last_rot_time = now
+    angle = relative_y_axis_rotation(last_orientation, current_orientation)
+    # print(f"{current_orientation=} {orientation=} {angle=}")
+    current_speed = angle / time_diff
+    current_frequency = current_speed / motor.ROTATION_PER_STEP / motor.get_step_resolution()
+    acceleration = (current_speed - last_speed) / time_diff
 
-    angle = relative_y_axis_rotation(current_orientation, orientation)
-    print(f"{current_orientation=} {orientation=} {angle=}")
-    current_orientation = orientation
-    if disable_motor:
+    if abs(last_frequency) < MIN_FREQ and abs(current_frequency) < MIN_FREQ:
+        # Both speeds are very low, no need to move
+        last_speed = 0.0
+        last_frequency = 0.0
+        last_orientation = current_orientation
         return web.Response(status=200)
-    if angle == 0:
+    elif abs(last_frequency) < MIN_FREQ:
+        last_frequency = MIN_FREQ * (1 if current_frequency >= 0 else -1)
+        time_diff = abs((MIN_SPEED - current_speed) / acceleration)
+    elif abs(current_frequency) < MIN_FREQ:
+        current_frequency = 0.0
+        current_speed = 0.0
+        time_diff = abs((MIN_SPEED - last_speed) / acceleration)
+    elif last_frequency*current_frequency < 0:
+        time_to_decelerate = abs((MIN_SPEED - last_speed)/ acceleration)
+        acc_time = abs((MIN_SPEED - current_speed) / acceleration)
+        next_dir = motor.GPIO.HIGH if last_frequency >= 0 else motor.GPIO.LOW
+        current_dir = motor.GPIO.LOW if next_dir == motor.GPIO.HIGH else motor.GPIO.HIGH
+        acceleration = abs(acceleration) * motor.INERTIA_PLATFORM2WHEEL_RATIO
+        queue.put((current_dir, -acceleration, int(abs(last_frequency)), time_to_decelerate))
+        queue.put((next_dir, acceleration, MIN_FREQ, acc_time))
+        last_orientation = current_orientation
+        last_speed = current_speed
+        last_frequency = current_frequency
         return web.Response(status=200)
-    if angle > 0:
-        motor.GPIO.output(motor.PINS["DIR"], motor.GPIO.LOW)
+
+    # Adjust DIR pin
+    dir = 0
+    if current_frequency > 0 or last_frequency > 0:
+        dir = motor.GPIO.LOW
     else:
-        motor.GPIO.output(motor.PINS["DIR"], motor.GPIO.HIGH)
-    angle = abs(angle)
-    motor.GPIO.output(motor.PINS["EN"], motor.GPIO.LOW)  # Enable the motor
-    motor.rotate_platform2(angle, duration=1, start_frequency=30)
-    motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the motor
+        dir = motor.GPIO.HIGH
+        acceleration = -acceleration
+        last_frequency = -last_frequency
 
+    # Rotate
+    queue.put((dir, acceleration*motor.INERTIA_PLATFORM2WHEEL_RATIO, int(last_frequency), time_diff))
+
+    # Update last values
+    last_orientation = current_orientation
+    last_speed = current_speed
+    last_frequency = current_frequency
     return web.Response(status=200)
 
 async def javascript(request: web.Request) -> web.Response:
@@ -192,6 +254,12 @@ async def on_shutdown(app: web.Application) -> None:
     # If a shared webcam was opened, stop it.
     if webcam is not None:
         webcam.video.stop()
+    
+    if process is not None:
+        queue.put(None)
+        process.join()
+        process = None
+
 
 
 if __name__ == "__main__":
@@ -248,9 +316,16 @@ if __name__ == "__main__":
     app.router.add_post("/offer", offer)
     app.router.add_post("/rotate", rotate)
 
+    mp.set_start_method('spawn')
     if not args.disable_motor:
         motor.setup()
         motor.reset()
         disable_motor = args.disable_motor
+        motor.GPIO.output(motor.MPINS, motor.GPIO.HIGH) # setting 1/16 step
+        process = mp.Process(target=cmotor_worker, args=(queue,))
+        process.start()
+    else:
+        process = mp.Process(target=cmotor_worker_mock, args=(queue,))
+        process.start()
 
     web.run_app(app, host=args.host, port=args.port, ssl_context=ssl_context)
