@@ -52,8 +52,8 @@ def test_negation_of_accelerated_impulse():
 
 def test_acceleration_of_accelerated_impulse():
     """Test the acceleration of the accelerated impulse durations generator."""
-    duration = 1
-    acceleration = 2 * INERTIA_PLATFORM2WHEEL_RATIO * (math.pi) / duration / duration
+    duration = 0.5
+    acceleration = INERTIA_PLATFORM2WHEEL_RATIO * 1.6 / duration / duration
     start_impulse = 1/300
     start = time.perf_counter()
     impulses = accelerated_impulse_durations(acceleration, duration, start_impulse)
@@ -64,6 +64,7 @@ def test_acceleration_of_accelerated_impulse():
     final_speed = (ROTATION_PER_STEP * get_step_resolution()) / (impulses[-1])
     theoretical_final_speed = (ROTATION_PER_STEP * get_step_resolution())/start_impulse + acceleration * duration
     print(f"Computed: {final_speed:.2f} rad/s, Theoretical: {theoretical_final_speed:.2f} rad/s")
+    print(f"Computed final frequency: {1.0/impulses[-1]} Hz, Theoretical: {theoretical_final_speed / ROTATION_PER_STEP/get_step_resolution()} Hz")
     print(f"Number of impulses: {len(impulses)}")
 
 
@@ -214,7 +215,7 @@ def test_accelerated_impulses_unique_values():
 
     impulses = accelerated_impulse_durations(acceleration, duration, 1/start_frequency)
     impulses_len = len(impulses)
-    impulses = map(lambda x: int(x * 1000_000_000), impulses)
+    impulses = map(lambda x: int(x * 1000_000), impulses)
     unique_impulses = []
     last_impulse = 1
     for idx, impulse in enumerate(impulses):
@@ -227,4 +228,4 @@ def test_accelerated_impulses_unique_values():
     print(f"Total impulses: {impulses_len}")
 
 logging.basicConfig(level=logging.DEBUG)
-test_accelerated_impulses_unique_values()
+test_acceleration_of_accelerated_impulse()
