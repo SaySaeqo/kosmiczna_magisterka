@@ -22,8 +22,8 @@ from aiortc import (
 from aiortc.contrib.media import MediaPlayer, MediaRelay
 
 ROOT = os.path.dirname(__file__)
-cert_path = os.path.join("~", "certs", "server_rsa.crt")
-key_path = os.path.join("~", "certs", "server_rsa.key")
+cert_path = os.path.join("/etc/ssl/mycerts", "server_rsa.crt")
+key_path = os.path.join("/etc/ssl/mycerts", "server_rsa.key")
 
 pcs = set()
 relay = None
@@ -315,6 +315,7 @@ if __name__ == "__main__":
         cert_path, key_path = os.path.join(ROOT, cert_file),os.path.join(ROOT,key_file)
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ssl_context.set_ciphers('ECDHE+AESGCM') 
+    print(cert_path, key_path)
     ssl_context.load_cert_chain(cert_path,key_path)
  
     app = web.Application()
