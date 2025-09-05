@@ -9,7 +9,6 @@ from typing import Optional
 import math
 import time
 import motor
-import kosmiczna_magisterka.fast_motor as cmotor
 import multiprocessing as mp
 
 from aiohttp import web
@@ -27,10 +26,14 @@ pcs = set()
 relay = None
 webcam = None
 disable_motor = True
-queue = mp.Queue()
+ctx = mp.get_context("spawn")
+queue = ctx.Queue()
 process = None
 
 def cmotor_worker(q):
+    import kosmiczna_magisterka.fast_motor as cmotor
+    motor.GPIO.setmode(motor.GPIO.BCM)
+    motor.GPIO.setup(list(motor.PINS.values()), motor.GPIO.OUT)
     while True:
         task = q.get()
         if task is None:
@@ -128,7 +131,7 @@ last_rot_time = time.perf_counter()
 last_speed = 0.0
 last_frequency = 0.0
 MIN_FREQ = 300
-MIN_SPEED = MIN_FREQ*motor.ROTATION_PER_STEP * motor.get_step_resolution()
+MIN_SPEED = MIN_FREQ*motor.ROTATION_PER_STEP / 16 
 
 
 async def rotate(request: web.Request) -> web.Response:
@@ -255,6 +258,7 @@ async def on_shutdown(app: web.Application) -> None:
     if webcam is not None:
         webcam.video.stop()
     
+    global process
     if process is not None:
         queue.put(None)
         process.join()
@@ -316,16 +320,15 @@ if __name__ == "__main__":
     app.router.add_post("/offer", offer)
     app.router.add_post("/rotate", rotate)
 
-    mp.set_start_method('spawn')
     if not args.disable_motor:
         motor.setup()
         motor.reset()
         disable_motor = args.disable_motor
         motor.GPIO.output(motor.MPINS, motor.GPIO.HIGH) # setting 1/16 step
-        process = mp.Process(target=cmotor_worker, args=(queue,))
+        process = ctx.Process(target=cmotor_worker, args=(queue,))
         process.start()
     else:
-        process = mp.Process(target=cmotor_worker_mock, args=(queue,))
+        process = ctx.Process(target=cmotor_worker_mock, args=(queue,))
         process.start()
 
     web.run_app(app, host=args.host, port=args.port, ssl_context=ssl_context)
