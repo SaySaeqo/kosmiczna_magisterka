@@ -9,7 +9,8 @@ from typing import Optional
 import math
 import time
 import motor
-import multiprocessing as mp
+import threading
+import queue as thread_queue
 
 from aiohttp import web
 from aiortc import (
@@ -28,7 +29,7 @@ webcam = None
 disable_motor = True
 ctx = None
 queue = None
-process = None
+motor_thread = None
 
 def cmotor_worker(q):
     try:
@@ -37,26 +38,22 @@ def cmotor_worker(q):
         motor.reset()
         motor.GPIO.output(motor.MPINS, motor.GPIO.HIGH) # setting 1/16 step
         motor.GPIO.output(motor.PINS["EN"], motor.GPIO.LOW)  # Enable the motor
-        while True:
-            task = q.get()
-            if task is None:
-                break
+        for task in iter(q.get, None):
             print(".",end="", flush=True)
             dir_pin, acceleration, start_freq, duration = task
             motor.GPIO.output(motor.PINS["DIR"], dir_pin)
             cmotor.generate_signal(acceleration, int(start_freq), duration)
+            q.task_done()
         motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the m   ootor
     except KeyboardInterrupt: 
         motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the m   ootor
 
 def cmotor_worker_mock(q):
-    while True:
-        task = q.get()
-        if task is None:
-            break
+    for task in iter(q.get, None):
         dir_pin, acceleration, start_freq, duration = task
         print(f"Mock motor: dir={dir_pin} acc={acceleration:.2f} start_freq={start_freq} duration={duration:.2f}")
         time.sleep(duration + 0.1)
+        q.task_done()
 
 
 def create_local_tracks(
@@ -263,13 +260,13 @@ async def on_shutdown(app: web.Application) -> None:
     if webcam is not None:
         webcam.video.stop()
     
-    global process
-    if process is not None:
-        queue.put(None)
-        process.join()
-        process = None
-        queue.close()
-        queue.join_thread()
+    global motor_thread, queue
+    if queue is not None:
+        queue.put(None)          # sentinel
+    if motor_thread is not None:
+        motor_thread.join(timeout=2.0)
+        motor_thread = None
+    queue = None
 
 
 
@@ -327,15 +324,14 @@ if __name__ == "__main__":
     app.router.add_post("/offer", offer)
     app.router.add_post("/rotate", rotate)
 
-    print(mp.get_start_method())
-    ctx = mp.get_context("spawn")
-    queue = ctx.Queue()
+    queue = thread_queue.Queue()
     if not args.disable_motor:
         disable_motor = args.disable_motor
-        process = ctx.Process(target=cmotor_worker, args=(queue,))
-        process.start()
+        motor_thread = threading.Thread(target=cmotor_worker, args=(queue,), daemon=True)
+        motor_thread.start()
     else:
-        process = ctx.Process(target=cmotor_worker_mock, args=(queue,))
-        process.start()
+        # keep mock version threaded too
+        motor_thread = threading.Thread(target=cmotor_worker_mock, args=(queue,), daemon=True)
+        motor_thread.start()
 
     web.run_app(app, host=args.host, port=args.port, ssl_context=ssl_context)
