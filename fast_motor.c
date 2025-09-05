@@ -35,7 +35,6 @@
     clock_gettime(CLOCK_MONOTONIC, &end); \
     elapsed = (end.tv_sec - start.tv_sec) * 1000000000 + (end.tv_nsec - start.tv_nsec); \
 
-static bool generating_signal = false;
 
 static void fast_motor_atexit(void) {
     gpioTerminate();
@@ -94,13 +93,6 @@ static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
 
 static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x more rotation
 {
-    if (generating_signal)
-    {
-        PyErr_SetString(PyExc_Exception, "Signal generation already in progress");
-        return NULL;
-    }
-    printf("Starting signal generation\n");
-    generating_signal = true;
     gpioWrite(STEP_PIN, 1);
 
     // Init time calculation start
@@ -113,7 +105,6 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     int freq;
     if (!PyArg_ParseTuple(args, "fif", &acceleration, &freq, &duration))
     {
-        generating_signal = false;
         return NULL;
     }
 
@@ -147,7 +138,6 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     Py_END_ALLOW_THREADS
 
     printf("Signal generation finished\n");
-    generating_signal = false;
     Py_RETURN_NONE;
 }
 

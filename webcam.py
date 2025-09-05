@@ -41,7 +41,6 @@ def cmotor_worker(q):
         motor.GPIO.output(motor.MPINS, motor.GPIO.HIGH) # setting 1/16 step
         motor.GPIO.output(motor.PINS["EN"], motor.GPIO.LOW)  # Enable the motor
         for task in iter(q.get, None):
-            print(task, flush=True)
             dir_pin, acceleration, start_freq, duration = task
             motor.GPIO.output(motor.PINS["DIR"], dir_pin)
             cmotor.generate_signal(acceleration, abs(int(start_freq)), abs(duration))
