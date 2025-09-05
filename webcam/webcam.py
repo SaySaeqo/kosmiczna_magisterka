@@ -32,8 +32,9 @@ process = None
 
 def cmotor_worker(q):
     import kosmiczna_magisterka.fast_motor as cmotor
-    motor.GPIO.setmode(motor.GPIO.BCM)
-    motor.GPIO.setup(list(motor.PINS.values()), motor.GPIO.OUT)
+    motor.setup()
+    motor.reset()
+    motor.GPIO.output(motor.MPINS, motor.GPIO.HIGH) # setting 1/16 step
     while True:
         task = q.get()
         if task is None:
@@ -150,7 +151,7 @@ async def rotate(request: web.Request) -> web.Response:
     angle = relative_y_axis_rotation(last_orientation, current_orientation)
     # print(f"{current_orientation=} {orientation=} {angle=}")
     current_speed = angle / time_diff
-    current_frequency = current_speed / motor.ROTATION_PER_STEP / motor.get_step_resolution()
+    current_frequency = current_speed / motor.ROTATION_PER_STEP * 16  # 1/16 step
     acceleration = (current_speed - last_speed) / time_diff
 
     if abs(last_frequency) < MIN_FREQ and abs(current_frequency) < MIN_FREQ:
@@ -299,9 +300,9 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     if args.verbose:
-        logging.basicConfig(level=logging.DEBUG)
-    else:
         logging.basicConfig(level=logging.INFO)
+    else:
+        logging.basicConfig(level=logging.WARNING)
     cert_file = "server_rsa.crt"
     key_file = "server_rsa.key"
     if args.cert_file:
@@ -321,10 +322,7 @@ if __name__ == "__main__":
     app.router.add_post("/rotate", rotate)
 
     if not args.disable_motor:
-        motor.setup()
-        motor.reset()
         disable_motor = args.disable_motor
-        motor.GPIO.output(motor.MPINS, motor.GPIO.HIGH) # setting 1/16 step
         process = ctx.Process(target=cmotor_worker, args=(queue,))
         process.start()
     else:
