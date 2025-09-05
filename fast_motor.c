@@ -146,6 +146,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     } else {
         gpioWrite(DIR_PIN, 1);
         freq = -freq;
+        acceleration = -acceleration;
     }
     float time_passed = 0.0;
     float impulse_duration = 1.0 / freq;

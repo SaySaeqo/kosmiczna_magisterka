@@ -169,19 +169,13 @@ async def rotate(request: web.Request) -> web.Response:
     elif last_frequency*current_frequency < 0:
         time_to_decelerate = abs((MIN_SPEED - last_speed)/ acceleration)
         acc_time = abs((MIN_SPEED - current_speed) / acceleration)
-        acceleration = abs(acceleration) * motor.INERTIA_PLATFORM2WHEEL_RATIO
-        queue.put((-acceleration, last_frequency, time_to_decelerate))
+        acceleration *= motor.INERTIA_PLATFORM2WHEEL_RATIO
+        queue.put((acceleration, last_frequency, time_to_decelerate))
         queue.put((acceleration, MIN_FREQ * (-1 if last_frequency > 0 else 1), acc_time))
         last_orientation = current_orientation
         last_speed = current_speed
         last_frequency = current_frequency
         return web.Response(status=200)
-
-    # Adjust DIR pin
-    if current_frequency > 0 or last_frequency > 0:
-        pass
-    else:
-        acceleration = -acceleration
 
     # Rotate
     queue.put((acceleration*motor.INERTIA_PLATFORM2WHEEL_RATIO, last_frequency, time_diff))
