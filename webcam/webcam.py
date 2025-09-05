@@ -26,37 +26,37 @@ pcs = set()
 relay = None
 webcam = None
 disable_motor = True
-ctx = mp.get_context("spawn")
-queue = ctx.Queue()
+ctx = None
+queue = None
 process = None
 
 def cmotor_worker(q):
-    import kosmiczna_magisterka.fast_motor as cmotor
-    motor.setup()
-    motor.reset()
-    motor.GPIO.output(motor.MPINS, motor.GPIO.HIGH) # setting 1/16 step
-    while True:
-        task = q.get()
-        if task is None:
-            break
-        dir, acceleration, start_freq, duration = task
+    try:
+        import kosmiczna_magisterka.fast_motor as cmotor
+        motor.setup()
+        motor.reset()
+        motor.GPIO.output(motor.MPINS, motor.GPIO.HIGH) # setting 1/16 step
         motor.GPIO.output(motor.PINS["EN"], motor.GPIO.LOW)  # Enable the motor
-        motor.GPIO.output(motor.PINS["DIR"], dir)
-        cmotor.generate_signal(acceleration, start_freq, duration)
+        while True:
+            task = q.get()
+            if task is None:
+                break
+            print(".",end="", flush=True)
+            dir_pin, acceleration, start_freq, duration = task
+            motor.GPIO.output(motor.PINS["DIR"], dir_pin)
+            cmotor.generate_signal(acceleration, int(start_freq), duration)
         motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the m   ootor
-    queue.close()
-    queue.join_thread()
+    except KeyboardInterrupt: 
+        motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the m   ootor
 
 def cmotor_worker_mock(q):
     while True:
         task = q.get()
         if task is None:
             break
-        dir, acceleration, start_freq, duration = task
-        print(f"Mock motor: dir={dir} acc={acceleration:.2f} start_freq={start_freq} duration={duration:.2f}")
+        dir_pin, acceleration, start_freq, duration = task
+        print(f"Mock motor: dir={dir_pin} acc={acceleration:.2f} start_freq={start_freq} duration={duration:.2f}")
         time.sleep(duration + 0.1)
-    queue.close()
-    queue.join_thread()
 
 
 def create_local_tracks(
@@ -185,16 +185,16 @@ async def rotate(request: web.Request) -> web.Response:
         return web.Response(status=200)
 
     # Adjust DIR pin
-    dir = 0
+    dir_pin = 0
     if current_frequency > 0 or last_frequency > 0:
-        dir = motor.GPIO.LOW
+        dir_pin = motor.GPIO.LOW
     else:
-        dir = motor.GPIO.HIGH
+        dir_pin = motor.GPIO.HIGH
         acceleration = -acceleration
         last_frequency = -last_frequency
 
     # Rotate
-    queue.put((dir, acceleration*motor.INERTIA_PLATFORM2WHEEL_RATIO, int(last_frequency), time_diff))
+    queue.put((dir_pin, acceleration*motor.INERTIA_PLATFORM2WHEEL_RATIO, int(last_frequency), time_diff))
 
     # Update last values
     last_orientation = current_orientation
@@ -327,6 +327,9 @@ if __name__ == "__main__":
     app.router.add_post("/offer", offer)
     app.router.add_post("/rotate", rotate)
 
+    print(mp.get_start_method())
+    ctx = mp.get_context("spawn")
+    queue = ctx.Queue()
     if not args.disable_motor:
         disable_motor = args.disable_motor
         process = ctx.Process(target=cmotor_worker, args=(queue,))
