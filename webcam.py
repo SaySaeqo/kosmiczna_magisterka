@@ -22,6 +22,8 @@ from aiortc import (
 from aiortc.contrib.media import MediaPlayer, MediaRelay
 
 ROOT = os.path.dirname(__file__)
+cert_path = os.path.join("~", "certs", "server_rsa.crt")
+key_path = os.path.join("~", "certs", "server_rsa.key")
 
 pcs = set()
 relay = None
@@ -103,7 +105,7 @@ def force_codec(pc: RTCPeerConnection, sender: RTCRtpSender, forced_codec: str) 
 
 
 async def index(request: web.Request) -> web.Response:
-    content = open(os.path.join(ROOT, "../client5.html"), "r").read()
+    content = open(os.path.join(ROOT, "../client.html"), "r").read()
     return web.Response(content_type="text/html", text=content)
 
 def _clamp(v, lo=-1.0, hi=1.0):
@@ -306,21 +308,19 @@ if __name__ == "__main__":
         logging.basicConfig(level=logging.INFO)
     else:
         logging.basicConfig(level=logging.WARNING)
-    cert_file = "server_rsa.crt"
-    key_file = "server_rsa.key"
+
     if args.cert_file:
-      cert_file = args.cert_file
-      key_file = args.key_file
+        cert_file = args.cert_file
+        key_file = args.key_file
+        cert_path, key_path = os.path.join(ROOT, cert_file),os.path.join(ROOT,key_file)
     ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
     ssl_context.set_ciphers('ECDHE+AESGCM') 
-    a, b = os.path.join(ROOT, cert_file),os.path.join(ROOT,key_file)
-    #print(a,b)
-    ssl_context.load_cert_chain(a,b)
+    ssl_context.load_cert_chain(cert_path,key_path)
  
     app = web.Application()
     app.on_shutdown.append(on_shutdown)
     app.router.add_get("/", index)
-    app.router.add_get("/client.js", javascript)
+    #app.router.add_get("/client.js", javascript)
     app.router.add_post("/offer", offer)
     app.router.add_post("/rotate", rotate)
 
@@ -330,7 +330,6 @@ if __name__ == "__main__":
         motor_thread = threading.Thread(target=cmotor_worker, args=(queue,), daemon=True)
         motor_thread.start()
     else:
-        # keep mock version threaded too
         motor_thread = threading.Thread(target=cmotor_worker_mock, args=(queue,), daemon=True)
         motor_thread.start()
 
