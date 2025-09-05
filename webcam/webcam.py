@@ -44,9 +44,9 @@ def cmotor_worker(q):
             motor.GPIO.output(motor.PINS["DIR"], dir_pin)
             cmotor.generate_signal(acceleration, int(start_freq), duration)
             q.task_done()
-        motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the m   ootor
+        motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the motor
     except KeyboardInterrupt: 
-        motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the m   ootor
+        motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the motor
 
 def cmotor_worker_mock(q):
     for task in iter(q.get, None):
