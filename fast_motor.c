@@ -106,8 +106,6 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
         return NULL;
     }
 
-    Py_BEGIN_ALLOW_THREADS
-
     SLEEP_PREP
     float time_passed = 0.0;
     float impulse_duration = 1.0 / freq;
@@ -134,7 +132,6 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
         SLEEP(sleep_time-WRITING_TIME_NS)
         gpioWrite(STEP_PIN, 0);
     }
-    Py_END_ALLOW_THREADS
 
     Py_RETURN_NONE;
 }

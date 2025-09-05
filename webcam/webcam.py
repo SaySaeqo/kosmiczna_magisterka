@@ -43,7 +43,9 @@ def cmotor_worker(q):
         motor.GPIO.output(motor.PINS["EN"], motor.GPIO.LOW)  # Enable the motor
         motor.GPIO.output(motor.PINS["DIR"], dir)
         cmotor.generate_signal(acceleration, start_freq, duration)
-        motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the motor
+        motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the m   ootor
+    queue.close()
+    queue.join_thread()
 
 def cmotor_worker_mock(q):
     while True:
@@ -53,6 +55,8 @@ def cmotor_worker_mock(q):
         dir, acceleration, start_freq, duration = task
         print(f"Mock motor: dir={dir} acc={acceleration:.2f} start_freq={start_freq} duration={duration:.2f}")
         time.sleep(duration + 0.1)
+    queue.close()
+    queue.join_thread()
 
 
 def create_local_tracks(
@@ -264,6 +268,8 @@ async def on_shutdown(app: web.Application) -> None:
         queue.put(None)
         process.join()
         process = None
+        queue.close()
+        queue.join_thread()
 
 
 
