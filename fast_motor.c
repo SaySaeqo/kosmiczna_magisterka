@@ -15,7 +15,7 @@
     ts.tv_sec = 0;
 #define SLEEP(nanoseconds) \
     ts.tv_nsec = nanoseconds; \
-    while (clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, &rem)) \
+    while (clock_nanosleep(CLOCK_MONOTONIC, 0, &ts, &rem) == EINTR) \
     {                                                      \
         ts.tv_sec  = rem.tv_sec;                           \
         ts.tv_nsec = rem.tv_nsec;                          \
@@ -99,6 +99,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
         PyErr_SetString(PyExc_Exception, "Signal generation already in progress");
         return NULL;
     }
+    printf("Starting signal generation\n");
     generating_signal = true;
     gpioWrite(STEP_PIN, 1);
 
@@ -112,6 +113,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     int freq;
     if (!PyArg_ParseTuple(args, "fif", &acceleration, &freq, &duration))
     {
+        generating_signal = false;
         return NULL;
     }
 
@@ -144,6 +146,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     }
     Py_END_ALLOW_THREADS
 
+    printf("Signal generation finished\n");
     generating_signal = false;
     Py_RETURN_NONE;
 }
