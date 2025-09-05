@@ -11,6 +11,7 @@ import time
 import motor
 import threading
 import queue as thread_queue
+import RPi.GPIO as GPIO
 
 from aiohttp import web
 from aiortc import (
@@ -36,18 +37,14 @@ motor_thread = None
 def cmotor_worker(q):
     try:
         import kosmiczna_magisterka.fast_motor as cmotor
-        motor.setup()
-        motor.reset()
-        motor.GPIO.output(motor.MPINS, motor.GPIO.HIGH) # setting 1/16 step
-        motor.GPIO.output(motor.PINS["EN"], motor.GPIO.LOW)  # Enable the motor
+        cmotor.setup()
         for task in iter(q.get, None):
-            dir_pin, acceleration, start_freq, duration = task
-            motor.GPIO.output(motor.PINS["DIR"], dir_pin)
-            cmotor.generate_signal(acceleration, abs(int(start_freq)), abs(duration))
+            acceleration, start_freq, duration = task
+            cmotor.generate_signal(acceleration, start_freq, duration)
             q.task_done()
-        motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the motor
-    except KeyboardInterrupt: 
-        motor.GPIO.output(motor.PINS["EN"], motor.GPIO.HIGH)  # Disable the motor
+    except KeyboardInterrupt: ...
+    finally:
+        cmotor.cleanup()
 
 def cmotor_worker_mock(q):
     for task in iter(q.get, None):
@@ -172,27 +169,22 @@ async def rotate(request: web.Request) -> web.Response:
     elif last_frequency*current_frequency < 0:
         time_to_decelerate = abs((MIN_SPEED - last_speed)/ acceleration)
         acc_time = abs((MIN_SPEED - current_speed) / acceleration)
-        next_dir = motor.GPIO.HIGH if last_frequency >= 0 else motor.GPIO.LOW
-        current_dir = motor.GPIO.LOW if next_dir == motor.GPIO.HIGH else motor.GPIO.HIGH
         acceleration = abs(acceleration) * motor.INERTIA_PLATFORM2WHEEL_RATIO
-        queue.put((current_dir, -acceleration, int(abs(last_frequency)), time_to_decelerate))
-        queue.put((next_dir, acceleration, MIN_FREQ, acc_time))
+        queue.put((-acceleration, last_frequency, time_to_decelerate))
+        queue.put((acceleration, MIN_FREQ * (-1 if last_frequency > 0 else 1), acc_time))
         last_orientation = current_orientation
         last_speed = current_speed
         last_frequency = current_frequency
         return web.Response(status=200)
 
     # Adjust DIR pin
-    dir_pin = 0
     if current_frequency > 0 or last_frequency > 0:
-        dir_pin = motor.GPIO.LOW
+        pass
     else:
-        dir_pin = motor.GPIO.HIGH
         acceleration = -acceleration
-        last_frequency = -last_frequency
 
     # Rotate
-    queue.put((dir_pin, acceleration*motor.INERTIA_PLATFORM2WHEEL_RATIO, int(last_frequency), time_diff))
+    queue.put((acceleration*motor.INERTIA_PLATFORM2WHEEL_RATIO, last_frequency, time_diff))
 
     # Update last values
     last_orientation = current_orientation

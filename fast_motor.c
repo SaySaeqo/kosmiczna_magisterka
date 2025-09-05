@@ -10,6 +10,11 @@
         PyErr_SetString(PyExc_Exception, msg); \
         return -1; \
     }
+#define ASSERT_SUCCESS_NULL(status, msg) \
+    if (status < 0) { \
+        PyErr_SetString(PyExc_Exception, msg); \
+        return NULL; \
+    }
 #define SLEEP_PREP \
     struct timespec ts, rem; \
     ts.tv_sec = 0;
@@ -21,6 +26,11 @@
         ts.tv_nsec = rem.tv_nsec;                          \
     }
 #define STEP_PIN 24
+#define M1_PIN 17
+#define M2_PIN 27
+#define M3_PIN 22
+#define DIR_PIN 23
+#define ENABLE_PIN 4
 #define ROTATION_PER_STEP (M_PI/1600)
 #define CALCULATION_TIME_NS 260
 #define WRITING_TIME_NS 1100
@@ -46,9 +56,30 @@ fast_motor_module_exec(PyObject *m)
     ASSERT_SUCCESS(gpioInitialise(), "Failed to initialize PIGPIO");
     ASSERT_SUCCESS(Py_AtExit(fast_motor_atexit), "Failed to register PIGPIO exit handler");
     ASSERT_SUCCESS(gpioSetMode(STEP_PIN, PI_OUTPUT), "Failed to set GPIO mode");
+    ASSERT_SUCCESS(gpioSetMode(ENABLE_PIN, PI_OUTPUT), "Failed to set GPIO mode");
+    ASSERT_SUCCESS(gpioSetMode(DIR_PIN, PI_OUTPUT), "Failed to set GPIO mode");
+    ASSERT_SUCCESS(gpioSetMode(M1_PIN, PI_OUTPUT), "Failed to set GPIO mode");
+    ASSERT_SUCCESS(gpioSetMode(M2_PIN, PI_OUTPUT), "Failed to set GPIO mode");
+    ASSERT_SUCCESS(gpioSetMode(M3_PIN, PI_OUTPUT), "Failed to set GPIO mode");
     return 0;
 }
 
+static PyObject* setup_motor(PyObject* self)
+{
+    ASSERT_SUCCESS_NULL(gpioWrite(M1_PIN, 1), "Failed to write to GPIO");
+    ASSERT_SUCCESS_NULL(gpioWrite(M2_PIN, 1), "Failed to write to GPIO");
+    ASSERT_SUCCESS_NULL(gpioWrite(M3_PIN, 1), "Failed to write to GPIO");
+    ASSERT_SUCCESS_NULL(gpioWrite(STEP_PIN, 0), "Failed to write to GPIO");
+    ASSERT_SUCCESS_NULL(gpioWrite(DIR_PIN, 0), "Failed to write to GPIO");
+    ASSERT_SUCCESS_NULL(gpioWrite(ENABLE_PIN, 0), "Failed to write to GPIO");
+    Py_RETURN_NONE;
+}
+
+static PyObject* cleanup_motor(PyObject* self)
+{
+    ASSERT_SUCCESS_NULL(gpioWrite(ENABLE_PIN, 1), "Failed to write to GPIO");
+    Py_RETURN_NONE;
+}
 
 static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
 {
@@ -102,14 +133,20 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     // ----
 
     float duration, acceleration;
-    int freq;
-    if (!PyArg_ParseTuple(args, "fif", &acceleration, &freq, &duration))
+    float freq;
+    if (!PyArg_ParseTuple(args, "fff", &acceleration, &freq, &duration))
     {
         return NULL;
     }
 
     Py_BEGIN_ALLOW_THREADS
     SLEEP_PREP
+    if (freq > 0.0) {
+        gpioWrite(DIR_PIN, 0);
+    } else {
+        gpioWrite(DIR_PIN, 1);
+        freq = -freq;
+    }
     float time_passed = 0.0;
     float impulse_duration = 1.0 / freq;
     float acc_const = acceleration / ROTATION_PER_STEP;
@@ -153,6 +190,18 @@ static PyMethodDef fast_motor_funcs[] = {
 		generate_signal,
 		METH_VARARGS,
 		"Generates a wave signal for given parameters. (adhoc calc version)"
+    },
+    {	
+        "setup",
+        setup_motor,
+        METH_NOARGS,
+        "Sets up the motor by configuring GPIO pins."
+    },
+    {    
+        "cleanup",
+        cleanup_motor,
+        METH_NOARGS,
+        "Cleans up the motor by resetting GPIO pins."
     },
 	{NULL, NULL, 0, NULL} // Sentinel
 };
