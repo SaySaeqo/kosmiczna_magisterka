@@ -4,6 +4,7 @@
 #include <stdio.h>
 #include <time.h>
 #include <math.h>
+#include <stdbool.h>
 #define ASSERT_SUCCESS(status, msg) \
     if (status < 0) { \
         PyErr_SetString(PyExc_Exception, msg); \
@@ -33,6 +34,8 @@
 #define TIME_CALC_END \
     clock_gettime(CLOCK_MONOTONIC, &end); \
     elapsed = (end.tv_sec - start.tv_sec) * 1000000000 + (end.tv_nsec - start.tv_nsec); \
+
+static bool generating_signal = false;
 
 static void fast_motor_atexit(void) {
     gpioTerminate();
@@ -91,6 +94,12 @@ static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
 
 static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x more rotation
 {
+    if (generating_signal)
+    {
+        PyErr_SetString(PyExc_Exception, "Signal generation already in progress");
+        return NULL;
+    }
+    generating_signal = true;
     gpioWrite(STEP_PIN, 1);
 
     // Init time calculation start
@@ -135,6 +144,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     }
     Py_END_ALLOW_THREADS
 
+    generating_signal = false;
     Py_RETURN_NONE;
 }
 
