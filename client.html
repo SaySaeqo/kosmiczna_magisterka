@@ -82,6 +82,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             );
             let lastPoseOrientation = null;
             let sendRotationInterval = null;
+            let sendPrintQueueSizeInterval = null;
             let button4Pressed = false;
 
             let video = document.createElement('video');
@@ -221,6 +222,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                         });
                     }
                 }, 100);
+
+                sendPrintQueueSizeInterval = setInterval(() => {
+                    if (button4Pressed) {
+                        fetch('/print_queue_size', {
+                            method: 'POST',
+                        });
+                    }
+                }, 100);
             }
 
             function onSessionEnded(event) {
@@ -228,6 +237,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 xrButton.textContent = 'Enter VR';
                 clearInterval(sendRotationInterval);
                 sendRotationInterval = null;
+                clearInterval(sendPrintQueueSizeInterval);
+                sendPrintQueueSizeInterval = null;
             }
 
             function multiplyQuaternions(q1, q2) {

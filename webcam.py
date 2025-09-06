@@ -177,6 +177,11 @@ async def rotate(request: web.Request) -> web.Response:
     last_speed = current_speed
     return web.Response(status=200)
 
+async def print_queue_size(request: web.Request):
+    global queue
+    print(f"Queue size: {queue.qsize()}")
+    return web.Response(status=200)
+
 async def javascript(request: web.Request) -> web.Response:
     content = open(os.path.join(ROOT, "client.js"), "r").read()
     return web.Response(content_type="application/javascript", text=content)
@@ -298,6 +303,7 @@ if __name__ == "__main__":
     app.on_shutdown.append(on_shutdown)
     app.router.add_get("/", index)
     #app.router.add_get("/client.js", javascript)
+    app.router.add_post("/print_queue_size", print_queue_size)
     app.router.add_post("/offer", offer)
     app.router.add_post("/rotate", rotate)
 
