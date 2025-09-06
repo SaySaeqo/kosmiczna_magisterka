@@ -38,7 +38,7 @@ def cmotor_worker(q):
         import kosmiczna_magisterka.fast_motor as cmotor
         cmotor.setup()
         for task in iter(q.get, None):
-            cmotor.generate_signal(*task)
+            cmotor.generate_signal(task)
             q.task_done()
     except KeyboardInterrupt: ...
     finally:

@@ -47,6 +47,8 @@
     elapsed = (end.tv_sec - start.tv_sec) * 1000000000 + (end.tv_nsec - start.tv_nsec); \
 
 
+static struct timespec signal_min_start;
+
 static void fast_motor_atexit(void) {
     gpioTerminate();
 }
@@ -67,6 +69,7 @@ fast_motor_module_exec(PyObject *m)
     ASSERT_SUCCESS(gpioWrite(M1_PIN, 1), "Failed to write to GPIO");
     ASSERT_SUCCESS(gpioWrite(M2_PIN, 1), "Failed to write to GPIO");
     ASSERT_SUCCESS(gpioWrite(M3_PIN, 1), "Failed to write to GPIO");
+    clock_gettime(CLOCK_MONOTONIC, &signal_min_start);
     return 0;
 }
 
@@ -136,6 +139,7 @@ static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
 
 static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x more rotation
 {
+    while (clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &signal_min_start, NULL) == EINTR);
     gpioWrite(STEP_PIN, 1);
 
     // Init time calculation start
@@ -146,7 +150,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
 
     double duration, acceleration;
     double freq;
-    if (!PyArg_ParseTuple(args, "ddd", &acceleration, &freq, &duration))
+    if (!PyArg_ParseTuple(args, "(ddd)", &acceleration, &freq, &duration))
     {
         return NULL;
     }
@@ -185,6 +189,10 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
         SLEEP(sleep_time-WRITING_TIME_NS)
         gpioWrite(STEP_PIN, 0);
     }
+    clock_gettime(CLOCK_MONOTONIC, &signal_min_start);
+    long long nsec = signal_min_start.tv_nsec + sleep_time - WRITING_TIME_NS;
+    signal_min_start.tv_sec += nsec / 1000000000;
+    signal_min_start.tv_nsec = nsec % 1000000000;
     Py_END_ALLOW_THREADS
 
     Py_RETURN_NONE;
