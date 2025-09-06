@@ -11,7 +11,6 @@ import time
 import motor
 import threading
 import queue as thread_queue
-import RPi.GPIO as GPIO
 
 from aiohttp import web
 from aiortc import (
@@ -39,19 +38,20 @@ def cmotor_worker(q):
         import kosmiczna_magisterka.fast_motor as cmotor
         cmotor.setup()
         for task in iter(q.get, None):
-            acceleration, start_freq, duration = task
-            cmotor.generate_signal(acceleration, start_freq, duration)
+            cmotor.generate_signal(*task)
             q.task_done()
     except KeyboardInterrupt: ...
     finally:
         cmotor.cleanup()
 
 def cmotor_worker_mock(q):
-    for task in iter(q.get, None):
-        dir_pin, acceleration, start_freq, duration = task
-        print(f"Mock motor: dir={dir_pin} acc={acceleration:.2f} start_freq={start_freq} duration={duration:.2f}")
-        time.sleep(duration + 0.1)
-        q.task_done()
+    try:
+        for task in iter(q.get, None):
+            acceleration, start_freq, duration = task
+            print(f"Mock motor: acc={acceleration:.2f} start_freq={start_freq} duration={duration:.2f}")
+            time.sleep(duration)
+            q.task_done()
+    except KeyboardInterrupt: ...
 
 
 def create_local_tracks(
@@ -127,9 +127,8 @@ def relative_y_axis_rotation(q_from: dict, q_to: dict) -> float:
     return y_axis_rotation(q)
 
 last_orientation = { "x": 0, "y": 0, "z": 0, "w": 1 }
-last_rot_time = time.perf_counter()
+last_rot_time = time.clock_gettime(time.CLOCK_MONOTONIC)
 last_speed = 0.0
-last_frequency = 0.0
 MIN_FREQ = 300
 MIN_SPEED = MIN_FREQ*motor.ROTATION_PER_STEP / 16 
 
@@ -140,50 +139,42 @@ async def rotate(request: web.Request) -> web.Response:
     current_orientation = params["orientation"]
 
     # Calculate time_diff, angle and save new position
-    global last_orientation, last_rot_time, last_speed, last_frequency
-    now = time.perf_counter()
+    global last_orientation, last_rot_time, last_speed
+    now = time.clock_gettime(time.CLOCK_MONOTONIC)
     time_diff = now - last_rot_time
-    if time_diff < 0.1:  # Prevent too frequent updates
-        return web.Response(status=200)
-    else:
-        last_rot_time = now
+    last_rot_time = now
     angle = relative_y_axis_rotation(last_orientation, current_orientation)
+    last_orientation = current_orientation
     # print(f"{current_orientation=} {orientation=} {angle=}")
     current_speed = angle / time_diff
-    current_frequency = current_speed / motor.ROTATION_PER_STEP * 16  # 1/16 step
     acceleration = (current_speed - last_speed) / time_diff
+    start_frequency = last_speed / motor.ROTATION_PER_STEP * 16
 
-    if abs(last_frequency) < MIN_FREQ and abs(current_frequency) < MIN_FREQ:
+    if last_speed == 0.0 and abs(current_speed) < MIN_SPEED:
         # Both speeds are very low, no need to move
         last_speed = 0.0
-        last_frequency = 0.0
-        last_orientation = current_orientation
         return web.Response(status=200)
-    elif abs(last_frequency) < MIN_FREQ:
-        last_frequency = MIN_FREQ * (1 if current_frequency >= 0 else -1)
+    elif last_speed == 0.0:
+        start_frequency = MIN_FREQ * (1 if current_speed >= 0 else -1)
         time_diff = abs((MIN_SPEED - current_speed) / acceleration)
-    elif abs(current_frequency) < MIN_FREQ:
-        current_frequency = 0.0
+    elif abs(current_speed) < MIN_SPEED:
         current_speed = 0.0
         time_diff = abs((MIN_SPEED - last_speed) / acceleration)
-    elif last_frequency*current_frequency < 0:
+    elif last_speed*current_speed < 0:
         time_to_decelerate = abs((MIN_SPEED - last_speed)/ acceleration)
-        acc_time = abs((MIN_SPEED - current_speed) / acceleration)
-        acceleration *= motor.INERTIA_PLATFORM2WHEEL_RATIO
-        queue.put((acceleration, last_frequency, time_to_decelerate))
-        queue.put((acceleration, MIN_FREQ * (-1 if last_frequency > 0 else 1), acc_time))
-        last_orientation = current_orientation
+        time_to_accelerate = abs((MIN_SPEED - current_speed) / acceleration)
+
+        queue.put((acceleration, start_frequency, time_to_decelerate))
+        queue.put((acceleration, math.copysign(MIN_FREQ, acceleration), time_to_accelerate))
+
         last_speed = current_speed
-        last_frequency = current_frequency
         return web.Response(status=200)
 
     # Rotate
-    queue.put((acceleration*motor.INERTIA_PLATFORM2WHEEL_RATIO, last_frequency, time_diff))
+    queue.put((acceleration, start_frequency, time_diff))
 
     # Update last values
-    last_orientation = current_orientation
     last_speed = current_speed
-    last_frequency = current_frequency
     return web.Response(status=200)
 
 async def javascript(request: web.Request) -> web.Response:

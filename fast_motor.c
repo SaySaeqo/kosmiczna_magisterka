@@ -32,6 +32,7 @@
 #define DIR_PIN 23
 #define ENABLE_PIN 4
 #define ROTATION_PER_STEP (M_PI/1600)
+#define INERTIA_PLATFORM2WHEEL_RATIO 2.74
 #define CALCULATION_TIME_NS 260
 #define WRITING_TIME_NS 1100
 #define INIT_TIME_NS 6000 // 3000-80000 ns
@@ -61,16 +62,16 @@ fast_motor_module_exec(PyObject *m)
     ASSERT_SUCCESS(gpioSetMode(M1_PIN, PI_OUTPUT), "Failed to set GPIO mode");
     ASSERT_SUCCESS(gpioSetMode(M2_PIN, PI_OUTPUT), "Failed to set GPIO mode");
     ASSERT_SUCCESS(gpioSetMode(M3_PIN, PI_OUTPUT), "Failed to set GPIO mode");
+    ASSERT_SUCCESS(gpioWrite(STEP_PIN, 0), "Failed to write to GPIO");
+    ASSERT_SUCCESS(gpioWrite(DIR_PIN, 0), "Failed to write to GPIO");
+    ASSERT_SUCCESS(gpioWrite(M1_PIN, 1), "Failed to write to GPIO");
+    ASSERT_SUCCESS(gpioWrite(M2_PIN, 1), "Failed to write to GPIO");
+    ASSERT_SUCCESS(gpioWrite(M3_PIN, 1), "Failed to write to GPIO");
     return 0;
 }
 
 static PyObject* setup_motor(PyObject* self)
 {
-    ASSERT_SUCCESS_NULL(gpioWrite(M1_PIN, 1), "Failed to write to GPIO");
-    ASSERT_SUCCESS_NULL(gpioWrite(M2_PIN, 1), "Failed to write to GPIO");
-    ASSERT_SUCCESS_NULL(gpioWrite(M3_PIN, 1), "Failed to write to GPIO");
-    ASSERT_SUCCESS_NULL(gpioWrite(STEP_PIN, 0), "Failed to write to GPIO");
-    ASSERT_SUCCESS_NULL(gpioWrite(DIR_PIN, 0), "Failed to write to GPIO");
     ASSERT_SUCCESS_NULL(gpioWrite(ENABLE_PIN, 0), "Failed to write to GPIO");
     Py_RETURN_NONE;
 }
@@ -79,6 +80,17 @@ static PyObject* cleanup_motor(PyObject* self)
 {
     ASSERT_SUCCESS_NULL(gpioWrite(ENABLE_PIN, 1), "Failed to write to GPIO");
     Py_RETURN_NONE;
+}
+
+static int dir_value = 0;
+
+static void write_dir(int value)
+{
+    if (value != dir_value)
+    {
+        gpioWrite(DIR_PIN, value);
+        dir_value = value;
+    }
 }
 
 static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
@@ -132,9 +144,9 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     clock_gettime(CLOCK_MONOTONIC, &start);
     // ----
 
-    float duration, acceleration;
-    float freq;
-    if (!PyArg_ParseTuple(args, "fff", &acceleration, &freq, &duration))
+    double duration, acceleration;
+    double freq;
+    if (!PyArg_ParseTuple(args, "ddd", &acceleration, &freq, &duration))
     {
         return NULL;
     }
@@ -142,15 +154,15 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     Py_BEGIN_ALLOW_THREADS
     SLEEP_PREP
     if (freq > 0.0) {
-        gpioWrite(DIR_PIN, 0);
+        write_dir(0);
     } else {
-        gpioWrite(DIR_PIN, 1);
+        write_dir(1);
         freq = -freq;
         acceleration = -acceleration;
     }
-    float time_passed = 0.0;
-    float impulse_duration = 1.0 / freq;
-    float acc_const = acceleration / ROTATION_PER_STEP;
+    double time_passed = 0.0;
+    double impulse_duration = 1.0 / freq;
+    double acc_const = acceleration * INERTIA_PLATFORM2WHEEL_RATIO / ROTATION_PER_STEP;
 
     // Init time calculation end
     clock_gettime(CLOCK_MONOTONIC, &end);
