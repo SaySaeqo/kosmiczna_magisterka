@@ -101,7 +101,7 @@ def force_codec(pc: RTCPeerConnection, sender: RTCRtpSender, forced_codec: str) 
 
 
 async def index(request: web.Request) -> web.Response:
-    content = open(os.path.join(ROOT, "../client.html"), "r").read()
+    content = open(os.path.join(ROOT, "client.html"), "r").read()
     return web.Response(content_type="text/html", text=content)
 
 def _clamp(v, lo=-1.0, hi=1.0):

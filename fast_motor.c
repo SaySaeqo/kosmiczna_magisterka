@@ -175,7 +175,6 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     }
     Py_END_ALLOW_THREADS
 
-    printf("Signal generation finished\n");
     Py_RETURN_NONE;
 }
 
