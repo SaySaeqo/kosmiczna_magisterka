@@ -33,6 +33,10 @@ ctx = None
 queue = None
 motor_thread = None
 
+def LOG2FILE(json):
+    with open("webcam.log", "a") as f:
+        f.write(json + "\n")
+
 def cmotor_worker(q):
     try:
         import kosmiczna_magisterka.fast_motor as cmotor
@@ -141,6 +145,8 @@ async def rotate(request: web.Request) -> web.Response:
     # Calculate time_diff, angle and save new position
     global last_orientation, last_rot_time, last_speed
     now = time.clock_gettime(time.CLOCK_MONOTONIC)
+    params["time"] = now
+    LOG2FILE(json.dumps(params))
     time_diff = now - last_rot_time
     last_rot_time = now
     angle = relative_y_axis_rotation(last_orientation, current_orientation)
