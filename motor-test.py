@@ -28,6 +28,8 @@ import types
 import matplotlib.pyplot as plt
 import time
 import pprint
+import json
+import webcam
 
 def sum_times(times):
     return [sum(times[:i+1]) for i in range(len(times))]
@@ -227,5 +229,38 @@ def test_accelerated_impulses_unique_values():
     print(f"Number of unique impulses: {len(unique_impulses)}")
     print(f"Total impulses: {impulses_len}")
 
+def test_quest_input():
+    with open("webcam.log", "r") as f:
+        lines = f.readlines()
+        data = list(map(json.loads, lines))
+        prev_time = data[0]["time"]- 1 
+        prev_now = time.clock_gettime(time.CLOCK_MONOTONIC)
+        for i in range(len(data)): 
+            orientation = data[i]["orientation"]
+            time_diff = data[i]["time"] - prev_time
+            prev_time = data[i]["time"]
+            now = time.clock_gettime(time.CLOCK_MONOTONIC)
+            real_time_diff = now - prev_now
+            prev_now = now
+            if time_diff > real_time_diff:
+                time.sleep(time_diff - real_time_diff)
+            else:
+                pass
+                #print(f"Warning: processing is too slow! {time_diff=} {real_time_diff=}")
+            #some func
+            test_now = time.clock_gettime(time.CLOCK_MONOTONIC)
+            result = webcam.get_cmotor_parameters(orientation, time_diff)
+            test_time_passed = time.clock_gettime(time.CLOCK_MONOTONIC) - test_now
+            if time_diff < test_time_passed:
+                print(f"Warning: processing is too slow! {time_diff=} {test_time_passed=}")
+
+            with open("webcam_test_output.log", "a") as of:
+                of.write(json.dumps({
+                    "input": i+1,
+                    "output": result,
+                    "real_time_diff": test_time_passed
+                }) + "\n")
+
+
 logging.basicConfig(level=logging.DEBUG)
-test_acceleration_of_accelerated_impulse()
+test_quest_input()

@@ -136,19 +136,8 @@ last_speed = 0.0
 MIN_FREQ = 300
 MIN_SPEED = MIN_FREQ*motor.ROTATION_PER_STEP / 16 
 
-
-async def rotate(request: web.Request) -> web.Response:
-    # Get parameters
-    params = await request.json()
-    current_orientation = params["orientation"]
-
-    # Calculate time_diff, angle and save new position
-    global last_orientation, last_rot_time, last_speed
-    now = time.clock_gettime(time.CLOCK_MONOTONIC)
-    params["time"] = now
-    LOG2FILE(json.dumps(params))
-    time_diff = now - last_rot_time
-    last_rot_time = now
+def get_cmotor_parameters(current_orientation, time_diff) -> list[tuple[float, float, float]]:
+    global last_orientation, last_speed
     angle = relative_y_axis_rotation(last_orientation, current_orientation)
     last_orientation = current_orientation
     # print(f"{current_orientation=} {orientation=} {angle=}")
@@ -159,7 +148,7 @@ async def rotate(request: web.Request) -> web.Response:
     if last_speed == 0.0 and abs(current_speed) < MIN_SPEED:
         # Both speeds are very low, no need to move
         last_speed = 0.0
-        return web.Response(status=200)
+        return []
     elif last_speed == 0.0:
         start_frequency = MIN_FREQ * (1 if current_speed >= 0 else -1)
         time_diff = abs((MIN_SPEED - current_speed) / acceleration)
@@ -169,18 +158,31 @@ async def rotate(request: web.Request) -> web.Response:
     elif last_speed*current_speed < 0:
         time_to_decelerate = abs((MIN_SPEED - last_speed)/ acceleration)
         time_to_accelerate = abs((MIN_SPEED - current_speed) / acceleration)
-
-        queue.put((acceleration, start_frequency, time_to_decelerate))
-        queue.put((acceleration, math.copysign(MIN_FREQ, acceleration), time_to_accelerate))
-
         last_speed = current_speed
-        return web.Response(status=200)
 
-    # Rotate
-    queue.put((acceleration, start_frequency, time_diff))
+        return [(acceleration, start_frequency, time_to_decelerate),
+         (acceleration, math.copysign(MIN_FREQ, acceleration), time_to_accelerate)]
 
-    # Update last values
     last_speed = current_speed
+
+    return [(acceleration, start_frequency, time_diff)]
+
+async def rotate(request: web.Request) -> web.Response:
+    # Get parameters
+    params = await request.json()
+    current_orientation = params["orientation"]
+    now = time.clock_gettime(time.CLOCK_MONOTONIC)
+    params["time"] = now
+    LOG2FILE(json.dumps(params))
+
+    # Calculate time_diff, angle and save new position
+    global last_rot_time
+    time_diff = now - last_rot_time
+    last_rot_time = now
+
+    for task in get_cmotor_parameters(current_orientation, time_diff):
+        queue.put(task)
+
     return web.Response(status=200)
 
 async def print_queue_size(request: web.Request):
