@@ -197,7 +197,7 @@ if __name__ == "__main__":
                     duration = float(cmd[2]) if len(cmd) > 2 else 1
                     frequency = int(cmd[3]) if len(cmd) > 3 else 300
                 except ValueError:
-                    print("Usage: crotacc2 [radians] [seconds] [frequency]")
+                    print("Usage: crotacc2 [acceleration] [seconds] [frequency]")
                     continue
 
                 commands.append(with_arg(functools.partial(cmotor.generate_signal, (acceleration, frequency, duration))))
