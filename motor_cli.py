@@ -186,7 +186,7 @@ if __name__ == "__main__":
                     continue
 
                 acceleration = 2 * radians / duration / duration
-                commands.append(with_arg(functools.partial(cmotor.generate_signal, acceleration, frequency, duration)))
+                commands.append(with_arg(functools.partial(cmotor.generate_signal, (acceleration, frequency, duration))))
             elif cmd[0] == "crotacc2":
                 if rotator is not None:
                     print("Motor is already rotating. Use 'freq 0' to stop it first.")
@@ -200,7 +200,7 @@ if __name__ == "__main__":
                     print("Usage: crotacc2 [radians] [seconds] [frequency]")
                     continue
 
-                commands.append(with_arg(functools.partial(cmotor.generate_signal, acceleration, frequency, duration)))
+                commands.append(with_arg(functools.partial(cmotor.generate_signal, (acceleration, frequency, duration))))
             elif cmd[0] == "protacc":
                 if rotator is not None:
                     print("Motor is already rotating. Use 'freq 0' to stop it first.")
