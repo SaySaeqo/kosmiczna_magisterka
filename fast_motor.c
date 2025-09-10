@@ -139,15 +139,18 @@ static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
 
 static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x more rotation
 {
+    // Make sure that this function is not called too quickly 
     while (clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &signal_min_start, NULL) == EINTR);
+
+    // Start signal ASAP
     gpioWrite(STEP_PIN, 1);
 
-    // Init time calculation start
+    // Start "init time" measurement
     struct timespec start, end;
     int init_time;
     clock_gettime(CLOCK_MONOTONIC, &start);
-    // ----
 
+    // Get parameters
     double duration, acceleration;
     double freq;
     if (!PyArg_ParseTuple(args, "(ddd)", &acceleration, &freq, &duration))
@@ -155,8 +158,9 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
         return NULL;
     }
 
-    Py_BEGIN_ALLOW_THREADS
-    SLEEP_PREP
+    Py_BEGIN_ALLOW_THREADS // Python functions cannot be within this block
+    
+    // Correct parameters by controlling direction
     if (freq > 0.0) {
         write_dir(0);
     } else {
@@ -164,21 +168,26 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
         freq = -freq;
         acceleration = -acceleration;
     }
+    
+    // Prepare variable for signal generation
+    SLEEP_PREP
     double time_passed = 0.0;
     double impulse_duration = 1.0 / freq;
-    double acc_const = acceleration * INERTIA_PLATFORM2WHEEL_RATIO / ROTATION_PER_STEP;
+    double sleep_time;
+    const double acc_const = acceleration * INERTIA_PLATFORM2WHEEL_RATIO / ROTATION_PER_STEP;
 
-    // Init time calculation end
+    // Get "init time"
     clock_gettime(CLOCK_MONOTONIC, &end);
     init_time = (end.tv_sec - start.tv_sec) * 1000000000 + (end.tv_nsec - start.tv_nsec);
-    // ----
 
-    int sleep_time = (int)(impulse_duration * 500000000);
+    // Finish first impulse (started before getting parameters)
+    sleep_time = (int)(impulse_duration * 500000000);
     time_passed += impulse_duration;
     impulse_duration = 1.0 / (freq + acc_const * time_passed);
     SLEEP(sleep_time-WRITING_TIME_NS-CALCULATION_TIME_NS-init_time)
     gpioWrite(STEP_PIN, 0);
 
+    // Generate the rest of the impulses
     while (time_passed < duration)
     {
         SLEEP(sleep_time-WRITING_TIME_NS-CALCULATION_TIME_NS)
@@ -189,10 +198,13 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
         SLEEP(sleep_time-WRITING_TIME_NS)
         gpioWrite(STEP_PIN, 0);
     }
+
+    // Set minimum time for next signal
     clock_gettime(CLOCK_MONOTONIC, &signal_min_start);
-    long long nsec = signal_min_start.tv_nsec + sleep_time - WRITING_TIME_NS;
+    const long long nsec = signal_min_start.tv_nsec + sleep_time - WRITING_TIME_NS;
     signal_min_start.tv_sec += nsec / 1000000000;
     signal_min_start.tv_nsec = nsec % 1000000000;
+
     Py_END_ALLOW_THREADS
 
     Py_RETURN_NONE;
