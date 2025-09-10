@@ -151,13 +151,13 @@ def get_cmotor_parameters(current_orientation, time_diff) -> list[tuple[float, f
         return []
     elif last_speed == 0.0:
         start_frequency = MIN_FREQ * (1 if current_speed >= 0 else -1)
-        time_diff = abs((MIN_SPEED - current_speed) / acceleration)
+        time_diff = (current_speed - math.copysign(MIN_SPEED, current_speed)) / acceleration
     elif abs(current_speed) < MIN_SPEED:
         current_speed = 0.0
-        time_diff = abs((MIN_SPEED - last_speed) / acceleration)
+        time_diff = (math.copysign(MIN_SPEED, last_speed) - last_speed) / acceleration
     elif last_speed*current_speed < 0:
-        time_to_decelerate = abs((MIN_SPEED - last_speed)/ acceleration)
-        time_to_accelerate = abs((MIN_SPEED - current_speed) / acceleration)
+        time_to_decelerate = (math.copysign(MIN_SPEED, last_speed) - last_speed) / acceleration
+        time_to_accelerate = (current_speed - math.copysign(MIN_SPEED, current_speed)) / acceleration
         last_speed = current_speed
 
         return [(acceleration, start_frequency, time_to_decelerate),
@@ -172,7 +172,9 @@ async def rotate(request: web.Request) -> web.Response:
     params = await request.json()
     current_orientation = params["orientation"]
     now = time.clock_gettime(time.CLOCK_MONOTONIC)
-    params["time"] = now
+    params["monotonic"] = now
+    params["realtime"] = time.time()
+    params["perf_counter"] = time.perf_counter()
     LOG2FILE(json.dumps(params))
 
     # Calculate time_diff, angle and save new position

@@ -243,7 +243,8 @@ def test_quest_input():
             real_time_diff = now - prev_now
             prev_now = now
             if time_diff > real_time_diff:
-                time.sleep(time_diff - real_time_diff)
+                pass
+                #time.sleep(time_diff - real_time_diff)
             else:
                 pass
                 #print(f"Warning: processing is too slow! {time_diff=} {real_time_diff=}")
@@ -262,5 +263,6 @@ def test_quest_input():
                 }) + "\n")
 
 
-logging.basicConfig(level=logging.DEBUG)
-test_quest_input()
+if __name__ == "__main__":
+    logging.basicConfig(level=logging.DEBUG)
+    test_quest_input()

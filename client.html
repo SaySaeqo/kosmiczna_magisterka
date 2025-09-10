@@ -81,6 +81,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 { x: 0, y: 0, z: -1, w: 0 }
             );
             let lastPoseOrientation = null;
+            let sendRotationNumber = 0;
             let sendRotationInterval = null;
             let sendPrintQueueSizeInterval = null;
             let button4Pressed = false;
@@ -215,7 +216,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     if (lastPoseOrientation) {
                         fetch('/rotate', {
                             method: 'POST',
-                            body: JSON.stringify({ orientation: lastPoseOrientation.toJSON() }),
+                            body: JSON.stringify({ orientation: lastPoseOrientation.toJSON(), number: sendRotationNumber++ }),
                             headers: {
                                 'Content-Type': 'application/json'
                             }
