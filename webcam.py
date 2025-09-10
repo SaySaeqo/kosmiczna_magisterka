@@ -130,7 +130,7 @@ def relative_y_axis_rotation(q_from: dict, q_to: dict) -> float:
     }
     return y_axis_rotation(q)
 
-last_orientation = { "x": 0, "y": 0, "z": 0, "w": 1 }
+last_orientation = None
 last_rot_time = time.clock_gettime(time.CLOCK_MONOTONIC)
 last_speed = 0.0
 MIN_FREQ = 300
@@ -138,6 +138,9 @@ MIN_SPEED = MIN_FREQ*motor.ROTATION_PER_STEP / 16
 
 def get_cmotor_parameters(current_orientation, time_diff) -> list[tuple[float, float, float]]:
     global last_orientation, last_speed
+    if last_orientation is None:
+        last_orientation = current_orientation
+        return []
     angle = relative_y_axis_rotation(last_orientation, current_orientation)
     last_orientation = current_orientation
     # print(f"{current_orientation=} {orientation=} {angle=}")
@@ -174,7 +177,6 @@ async def rotate(request: web.Request) -> web.Response:
     now = time.clock_gettime(time.CLOCK_MONOTONIC)
     params["monotonic"] = now
     params["realtime"] = time.time()
-    params["perf_counter"] = time.perf_counter()
     LOG2FILE(json.dumps(params))
 
     # Calculate time_diff, angle and save new position
