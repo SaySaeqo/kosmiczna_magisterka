@@ -135,6 +135,7 @@ last_rot_time = time.clock_gettime(time.CLOCK_MONOTONIC)
 last_speed = 0.0
 MIN_FREQ = 300
 MIN_SPEED = MIN_FREQ*motor.ROTATION_PER_STEP / 16 
+last_number = -1
 
 def get_cmotor_parameters(current_orientation, time_diff) -> list[tuple[float, float, float]]:
     global last_orientation, last_speed
@@ -170,14 +171,19 @@ def get_cmotor_parameters(current_orientation, time_diff) -> list[tuple[float, f
 
     return [(acceleration, start_frequency, time_diff)]
 
-async def rotate(request: web.Request) -> web.Response:
-    # Get parameters
-    params = await request.json()
-    current_orientation = params["orientation"]
+def handle_rotate(json_params):
+    current_number = json_params["number"]
+    global last_number
+    if current_number <= last_number:
+        print(f"Out of order packet: {current_number=} {last_number=}")
+        return
+    last_number = current_number
+
+    current_orientation = json_params["orientation"]
     now = time.clock_gettime(time.CLOCK_MONOTONIC)
-    params["monotonic"] = now
-    params["realtime"] = time.time()
-    LOG2FILE(json.dumps(params))
+    json_params["monotonic"] = now
+    json_params["realtime"] = time.time()
+    LOG2FILE(json.dumps(json_params))
 
     # Calculate time_diff, angle and save new position
     global last_rot_time
@@ -187,7 +193,12 @@ async def rotate(request: web.Request) -> web.Response:
     for task in get_cmotor_parameters(current_orientation, time_diff):
         queue.put(task)
 
+async def rotate(request: web.Request) -> web.Response:
+    # Get parameters
+    params = await request.json()
+    handle_rotate(params)
     return web.Response(status=200)
+
 
 async def print_queue_size(request: web.Request):
     global queue
@@ -205,6 +216,12 @@ async def offer(request: web.Request) -> web.Response:
 
     pc = RTCPeerConnection()
     pcs.add(pc)
+
+    data_channel = pc.createDataChannel("rotation")
+
+    @data_channel.on("message")
+    def on_message(message) -> None:
+        handle_rotate(json.loads(message))
 
     @pc.on("connectionstatechange")
     async def on_connectionstatechange() -> None:

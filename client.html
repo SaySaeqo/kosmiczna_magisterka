@@ -85,6 +85,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let sendRotationInterval = null;
             let sendPrintQueueSizeInterval = null;
             let button4Pressed = false;
+            let rotationDataChannel = null;
 
             let video = document.createElement('video');
             video.autoplay = true;
@@ -126,6 +127,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
             async function start() {
                 const pc = new RTCPeerConnection();
+                rotationDataChannel = pc.createDataChannel("rotation");
                 pc.ontrack = ev => {
                     video.srcObject = ev.streams[0];
                     video.play();
@@ -214,13 +216,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                 sendRotationInterval = setInterval(() => {
                     if (lastPoseOrientation) {
-                        fetch('/rotate', {
-                            method: 'POST',
-                            body: JSON.stringify({ orientation: lastPoseOrientation.toJSON(), number: sendRotationNumber++ }),
-                            headers: {
-                                'Content-Type': 'application/json'
-                            }
-                        });
+                        rotationDataChannel.send(JSON.stringify({ orientation: lastPoseOrientation.toJSON(), number: sendRotationNumber++ }));
+                        //fetch('/rotate', {
+                        //    method: 'POST',
+                        //    body: JSON.stringify({ orientation: lastPoseOrientation.toJSON(), number: sendRotationNumber++ }),
+                        //    headers: {
+                        //        'Content-Type': 'application/json'
+                        //    }
+                        //});
                     }
                 }, 100);
 
