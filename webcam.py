@@ -217,12 +217,6 @@ async def offer(request: web.Request) -> web.Response:
     pc = RTCPeerConnection()
     pcs.add(pc)
 
-    data_channel = pc.createDataChannel("rotation")
-
-    @data_channel.on("message")
-    def on_message(message) -> None:
-        handle_rotate(json.loads(message))
-
     @pc.on("connectionstatechange")
     async def on_connectionstatechange() -> None:
         print("Connection state is %s" % pc.connectionState)
@@ -233,6 +227,10 @@ async def offer(request: web.Request) -> web.Response:
     @pc.on("datachannel")
     def on_datachannel(channel) -> None:
         print(f"Data channel created: {channel.label}")
+        
+        @channel.on("message")
+        def on_message(message) -> None:
+            handle_rotate(json.loads(message))
 
     # open media source
     audio, video = create_local_tracks(
