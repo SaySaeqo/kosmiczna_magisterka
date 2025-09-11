@@ -245,6 +245,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                         });
                     }
                 }, 100);
+                session.addEventListener('visibilitychange', () => {
+                    if (xrSession.visibilityState !== "visible") {
+                        hud.textContent += `\n${xrSession.visibilityState}: ${sendRotationNumber}`;
+                        // Optionally pause motor or ignore pose updates
+                    }
+                });
             }
 
             function onSessionEnded(event) {
@@ -286,6 +292,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     if (pose.emulatedPosition) {
                         hud.textContent += `\nTracking lost on frame ${sendRotationNumber}`;
                     }
+                }
+                else {
+                    hud.textContent += `\nNo pose on frame ${sendRotationNumber}`;
                 }
 
                 session.requestAnimationFrame(onXRFrame);
