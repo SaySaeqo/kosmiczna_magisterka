@@ -230,6 +230,10 @@ async def offer(request: web.Request) -> web.Response:
             await pc.close()
             pcs.discard(pc)
 
+    @pc.on("datachannel")
+    def on_datachannel(channel) -> None:
+        print(f"Data channel created: {channel.label}")
+
     # open media source
     audio, video = create_local_tracks(
         args.play_from, decode=not args.play_without_decoding
