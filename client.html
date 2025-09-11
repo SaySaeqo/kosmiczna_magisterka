@@ -29,9 +29,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         background: black;
     }
 
-    button {
+    #enter {
         position: absolute;
         bottom: 20px;
+        left: 20px;
+        z-index: 10;
+        padding: 10px;
+    }
+
+    #send-rotation {
+        position: absolute;
+        bottom: 40px;
         left: 20px;
         z-index: 10;
         padding: 10px;
@@ -58,6 +66,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 <body>
     <button id="enter">Enter VR</button>
+    <button id="send-rotation">Send Rotation</button>
     <div id="hud">Loading…</div>
     <div id="errors"></div>
     <main style='text-align: center;'>
@@ -86,6 +95,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let sendPrintQueueSizeInterval = null;
             let button4Pressed = false;
             let rotationDataChannel = null;
+
+            let sendRotationButton = document.getElementById('send-rotation');
 
             let video = document.createElement('video');
             video.autoplay = true;
@@ -278,6 +289,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
             await start();
             initXR();
+
+            sendRotationButton.addEventListener('click', () => {
+                rotationDataChannel.send(JSON.stringify({ orientation: {x: 0, y: 0, z: 0, w: 1}, number: sendRotationNumber++ }));
+            });
+
         })();
     </script>
 </body>
