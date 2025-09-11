@@ -104,6 +104,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             video.muted = true;
             video.crossOrigin = "anonymous";
             let hud = document.getElementById('hud');
+            let once = true;
 
             function buttonPressedThisFrame(gamepad, index) {
                 return (index < gamepad.buttons.length &&
@@ -159,7 +160,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                             xrButton.addEventListener('click', onButtonClicked);
                         } else {
                             xrButton.disabled = true;
-                            xrButton.textContent = 'WebXR not supported';
+                            xrButton.textContent += '\nWebXR not supported';
                         }
                     });
                 }
@@ -295,6 +296,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 }
                 else {
                     hud.textContent += `\nNo pose on frame ${sendRotationNumber}`;
+                }
+
+                if (sendRotationNumber == 100 && once) {
+                    hud.textContent += `Sent 100 rotations, stopping.`;
+                    once = false;
                 }
 
                 session.requestAnimationFrame(onXRFrame);
