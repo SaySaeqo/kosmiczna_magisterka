@@ -282,6 +282,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     );
                     xrSession.renderState.layers[0].transform = newTransform;
                     lastPoseOrientation = newTransform.orientation;
+
+                    if (pose.emulatedPosition) {
+                        hud.textContent += `\nTracking lost on frame ${sendRotationNumber}`;
+                    }
                 }
 
                 session.requestAnimationFrame(onXRFrame);
