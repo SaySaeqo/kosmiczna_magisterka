@@ -150,7 +150,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 const resp = await fetch('/offer', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ sdp: offer.sdp, type: offer.type }) });
                 const answer = await resp.json();
                 await pc.setRemoteDescription(answer);
-                hud.textContent = "WebRTC connected";
+                hud.textContent += "WebRTC connected";
             }
 
             function initXR() {
@@ -160,7 +160,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                             xrButton.addEventListener('click', onButtonClicked);
                         } else {
                             xrButton.disabled = true;
-                            xrButton.textContent += '\nWebXR not supported';
+                            xrButton.textContent = 'WebXR not supported';
                         }
                     });
                 }
@@ -299,7 +299,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 }
 
                 if (sendRotationNumber == 100 && once) {
-                    hud.textContent += `Sent 100 rotations, stopping.`;
+                    hud.textContent += `\nSent ${sendRotationNumber} rotations`;
                     once = false;
                 }
 
