@@ -108,7 +108,11 @@ async def index(request: web.Request) -> web.Response:
     content = open(os.path.join(ROOT, "client.html"), "r").read()
     return web.Response(content_type="text/html", text=content)
 
+CLAMP_FLAG = True
+
 def _clamp(v, lo=-1.0, hi=1.0):
+    if not CLAMP_FLAG:
+        return v
     return hi if v > hi else lo if v < lo else v
 
 def y_axis_rotation(q: dict) -> float:
@@ -157,7 +161,7 @@ def get_cmotor_parameters(current_orientation, time_diff) -> list[tuple[float, f
     acceleration = (current_speed - last_speed) / time_diff
     acceleration = _clamp(acceleration, -MAX_ACCELERATION, MAX_ACCELERATION)
     start_frequency = last_speed / motor.ROTATION_PER_STEP * 16
-    accumulated_angle -= acceleration * time_diff * time_diff / 2
+    accumulated_angle -= last_speed*time_diff + acceleration * time_diff * time_diff / 2
     if accumulated_angle < MIN_ANGLE and accumulated_angle > -MIN_ANGLE:
         accumulated_angle = 0.0
 
@@ -167,17 +171,23 @@ def get_cmotor_parameters(current_orientation, time_diff) -> list[tuple[float, f
         return []
     elif last_speed == 0.0:
         start_frequency = MIN_FREQ * (1 if current_speed >= 0 else -1)
-        time_diff = (current_speed - math.copysign(MIN_SPEED, current_speed)) / acceleration
+        time_diff = _clamp((current_speed - math.copysign(MIN_SPEED, current_speed)) / acceleration, -MESSAGE_INTERVAL, MESSAGE_INTERVAL)
     elif abs(current_speed) < MIN_SPEED:
         current_speed = 0.0
-        time_diff = (math.copysign(MIN_SPEED, last_speed) - last_speed) / acceleration
+        time_diff = _clamp((math.copysign(MIN_SPEED, last_speed) - last_speed) / acceleration, -MESSAGE_INTERVAL, MESSAGE_INTERVAL)
     elif last_speed*current_speed < 0:
         time_to_decelerate = (math.copysign(MIN_SPEED, last_speed) - last_speed) / acceleration
         time_to_accelerate = (current_speed - math.copysign(MIN_SPEED, current_speed)) / acceleration
         last_speed = current_speed
 
-        return [(acceleration, start_frequency, time_to_decelerate),
-            (acceleration, math.copysign(MIN_FREQ, acceleration), time_to_accelerate)]
+        if time_to_decelerate > time_diff:
+            return [(acceleration, start_frequency, time_diff)]
+        elif time_to_decelerate + time_to_accelerate > time_diff:
+            return [(acceleration, start_frequency, time_to_decelerate),
+                    (acceleration, math.copysign(MIN_FREQ, acceleration), time_diff - time_to_decelerate)]
+        else:
+            return [(acceleration, start_frequency, time_to_decelerate),
+                    (acceleration, math.copysign(MIN_FREQ, acceleration), time_to_accelerate)]
 
     last_speed = current_speed
 
@@ -190,6 +200,7 @@ def handle_rotate(json_params):
         print(f"Out of order packet: {current_number=} {last_number=}")
         return
     last_number = current_number
+
 
     current_orientation = json_params["orientation"]
     now = time.clock_gettime(time.CLOCK_MONOTONIC)
