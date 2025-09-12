@@ -228,7 +228,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                 sendRotationInterval = setInterval(() => {
                     if (lastPoseOrientation) {
-                        rotationDataChannel.send(JSON.stringify({ orientation: lastPoseOrientation.toJSON(), number: sendRotationNumber++ }));
+                        rotationDataChannel.send(JSON.stringify({ orientation: lastPoseOrientation.toJSON(), number: sendRotationNumber++, time: performance.now() }));
                         //fetch('/rotate', {
                         //    method: 'POST',
                         //    body: JSON.stringify({ orientation: lastPoseOrientation.toJSON(), number: sendRotationNumber++ }),
