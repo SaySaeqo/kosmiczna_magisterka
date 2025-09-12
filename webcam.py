@@ -133,21 +133,33 @@ def relative_y_axis_rotation(q_from: dict, q_to: dict) -> float:
 last_orientation = None
 last_rot_time = time.clock_gettime(time.CLOCK_MONOTONIC)
 last_speed = 0.0
+MESSAGE_INTERVAL = 0.1
 MIN_FREQ = 300
 MIN_SPEED = MIN_FREQ*motor.ROTATION_PER_STEP / 16 
+MAX_ACCELERATION = 50
+MAX_FREQ = 15000
+MAX_SPEED = MAX_FREQ*motor.ROTATION_PER_STEP / 16
 last_number = -1
+accumulated_angle = 0.0
+MIN_ANGLE = MIN_SPEED * MESSAGE_INTERVAL
 
 def get_cmotor_parameters(current_orientation, time_diff) -> list[tuple[float, float, float]]:
-    global last_orientation, last_speed
+    global last_orientation, last_speed, accumulated_angle
     if last_orientation is None:
         last_orientation = current_orientation
         return []
     angle = relative_y_axis_rotation(last_orientation, current_orientation)
+    accumulated_angle += angle
     last_orientation = current_orientation
     # print(f"{current_orientation=} {orientation=} {angle=}")
-    current_speed = angle / time_diff
+    current_speed = accumulated_angle / time_diff
+    current_speed = _clamp(current_speed, -MAX_SPEED, MAX_SPEED)
     acceleration = (current_speed - last_speed) / time_diff
+    acceleration = _clamp(acceleration, -MAX_ACCELERATION, MAX_ACCELERATION)
     start_frequency = last_speed / motor.ROTATION_PER_STEP * 16
+    accumulated_angle -= acceleration * time_diff * time_diff / 2
+    if accumulated_angle < MIN_ANGLE and accumulated_angle > -MIN_ANGLE:
+        accumulated_angle = 0.0
 
     if last_speed == 0.0 and abs(current_speed) < MIN_SPEED:
         # Both speeds are very low, no need to move
@@ -165,7 +177,7 @@ def get_cmotor_parameters(current_orientation, time_diff) -> list[tuple[float, f
         last_speed = current_speed
 
         return [(acceleration, start_frequency, time_to_decelerate),
-         (acceleration, math.copysign(MIN_FREQ, acceleration), time_to_accelerate)]
+            (acceleration, math.copysign(MIN_FREQ, acceleration), time_to_accelerate)]
 
     last_speed = current_speed
 
