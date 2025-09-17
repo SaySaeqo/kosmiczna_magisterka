@@ -274,7 +274,7 @@ static void* rotation_server_thread(void* arg)
     return NULL;
 }
 
-static PyObject* rotation_server(PyObject* self)
+static PyObject* rotation_server(PyObject* self, PyObject* noarg)
 {
     bool server_was_running;
     int thread_created = 0;
@@ -354,7 +354,7 @@ static PyObject* rotation_client(PyObject* self, PyObject* args)
     Py_RETURN_NONE;
 }
 
-static PyObject* print_globals(PyObject* self)
+static PyObject* print_globals(PyObject* self, PyObject* noarg)
 {
     pthread_mutex_lock(&lock);
     printf("g_angle: %ld, g_frequency: %f, g_acceleration: %f\n", g_angle, g_frequency, g_acceleration);
@@ -362,7 +362,7 @@ static PyObject* print_globals(PyObject* self)
     Py_RETURN_NONE;
 }
 
-static PyObject* stop_rotation(PyObject* self)
+static PyObject* stop_rotation(PyObject* self, PyObject* noarg)
 {
     Py_BEGIN_ALLOW_THREADS
     pthread_mutex_lock(&lock);
@@ -372,7 +372,7 @@ static PyObject* stop_rotation(PyObject* self)
     Py_RETURN_NONE;
 }
 
-static PyObject* cleanup_motor(PyObject* self)
+static PyObject* cleanup_motor(PyObject* self, PyObject* noarg)
 {
     ASSERT_SUCCESS_NULL(gpioWrite(ENABLE_PIN, 1), "Failed to write to GPIO");
     Py_RETURN_NONE;
@@ -404,7 +404,7 @@ fast_motor_module_exec(PyObject *m)
     return 0;
 }
 
-static PyObject* setup_motor(PyObject* self)
+static PyObject* setup_motor(PyObject* self, PyObject* noarg)
 {
     ASSERT_SUCCESS_NULL(gpioWrite(ENABLE_PIN, 0), "Failed to write to GPIO");
     Py_RETURN_NONE;
