@@ -334,7 +334,7 @@ static PyObject* rotation_client(PyObject* self, PyObject* args)
         g_angle += angle_steps;
     }
 
-    if (g_angle > 0) {
+    if (g_angle != 0) {
         // Update acceleration to reach the target angle in the given time
         g_acceleration = (2*g_angle-g_frequency*REACH_TIME)/(REACH_TIME*REACH_TIME);
         g_acceleration = fmax(fmin(g_acceleration, MAX_ACCELERATION), -MAX_ACCELERATION);
