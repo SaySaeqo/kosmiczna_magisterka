@@ -326,11 +326,26 @@ def test_quest_input():
         axs[4].grid()
         fig.tight_layout(rect=[0, 0, 1, 0.95])  # leave more space at the top
         
-        # TODO: ustalić MAX_ACCELERATION i zbadać problem max_time_error (jak bardzo występuje po przejściu na UDP)
     plt.show()
+
+def test_input_on_pi():
+    import kosmiczna_magisterka.fast_motor as cmotor
+    cmotor.setup()
+    cmotor.rotation_server()
+    with open("webcam.log", "r") as f:
+        lines = f.readlines()
+        data = list(map(json.loads, lines))
+        prev_monotonic = data[0]["monotonic"]- 1
+        for i in range(len(data)): 
+            diff_monotonic = data[i]["monotonic"] - prev_monotonic
+            prev_monotonic = data[i]["monotonic"]
+            time.sleep(diff_monotonic)
+            webcam.handle_rotate(data[i])
+
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.DEBUG)
     logging.getLogger("matplotlib").setLevel(logging.WARNING)
     logging.getLogger("PIL").setLevel(logging.WARNING)
-    test_quest_input()
+    #test_quest_input()
+    test_input_on_pi()
