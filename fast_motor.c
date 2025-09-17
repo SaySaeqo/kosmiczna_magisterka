@@ -316,6 +316,7 @@ static PyObject* rotation_client(PyObject* self, PyObject* args)
     double angle = get_angle(g_position, target_position);
     long angle_steps = (long)floor(angle / ROTATION_PER_STEP);
     pthread_mutex_lock(&lock);
+    g_position = target_position;
     g_angle += angle_steps;
 
     if (g_angle > 0) {
