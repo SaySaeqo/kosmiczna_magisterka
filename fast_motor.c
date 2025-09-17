@@ -222,7 +222,7 @@ static long g_angle = 0;
 #define REACH_TIME (INTERVAL*2)
 #define MAX_FREQUENCY 16000
 #define MAX_ACCELERATION 24000
-#define MIN_FREQUENCY 200
+#define MIN_FREQUENCY 300
 
 static void* rotation_server_thread(void* arg)
 {
@@ -276,17 +276,36 @@ static void* rotation_server_thread(void* arg)
 
 static PyObject* rotation_server(PyObject* self)
 {
-    if (g_server_is_running) {
+    bool server_was_running;
+    int thread_created = 0;
+    int thread_detached = 0;
+
+    Py_BEGIN_ALLOW_THREADS
+    pthread_mutex_lock(&lock);
+    server_was_running = g_server_is_running;
+
+    if (!server_was_running) {
+        pthread_t thread_id;
+        thread_created = pthread_create(&thread_id, NULL, rotation_server_thread, NULL);
+        if (thread_created != 0) {
+            thread_detached = pthread_detach(thread_id);
+        }
+    }
+    pthread_mutex_unlock(&lock);
+    Py_END_ALLOW_THREADS
+
+    if (server_was_running) {
         PyErr_SetString(PyExc_Exception, "Rotation server is already running");
         return NULL;
     }
-
-    pthread_t thread_id;
-    if (pthread_create(&thread_id, NULL, rotation_server_thread, NULL) != 0) {
+    if (thread_created != 0) {
         PyErr_SetString(PyExc_Exception, "Failed to create rotation server thread");
         return NULL;
     }
-    pthread_detach(thread_id);
+    if (thread_detached != 0) {
+        PyErr_SetString(PyExc_Exception, "Failed to detach rotation server thread");
+        return NULL;
+    }
 
     Py_RETURN_NONE;
 }
