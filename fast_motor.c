@@ -262,15 +262,10 @@ static void* rotation_server_thread(void* arg)
 
             g_angle += dir ? -1 : 1;
         } else if (g_acceleration != 0) {
-            int dir = g_acceleration < 0 ? 1 : 0;
-            write_dir(dir);
-
             pthread_mutex_unlock(&lock);
             long sleep_time = 1000000000/MIN_FREQUENCY;
             SLEEP(sleep_time)
             pthread_mutex_lock(&lock);
-            
-            g_angle += dir ? -1 : 1;
         }
 
     }
