@@ -231,91 +231,102 @@ def test_accelerated_impulses_unique_values():
     print(f"Total impulses: {impulses_len}")
 
 def test_quest_input():
-    for trueflag in range(2):
-        webcam.CLAMP_FLAG = True if trueflag == 1 else False
-        os.remove("webcam_test_output.log") if os.path.exists("webcam_test_output.log") else None
-        with open("webcam8.log", "r") as f:
-            lines = f.readlines()
-            data = list(map(json.loads, lines))
-            prev_monotonic = data[0]["monotonic"]- 1
-            if "realtime" in data[0]:
-                prev_realtime = data[0]["realtime"] - 1
-            prev_now = time.clock_gettime(time.CLOCK_MONOTONIC)
-            prev_number = -1
-            for i in range(len(data)): 
-                orientation = data[i]["orientation"]
-                diff_monotonic = data[i]["monotonic"] - prev_monotonic
-                prev_monotonic = data[i]["monotonic"]
-                if "realtime" in data[i]:
-                    diff_realtime = data[i]["realtime"] - prev_realtime
-                    prev_realtime = data[i]["realtime"]
-                else:
-                    diff_realtime = 0
-                if prev_number+1 != data[i].get("number", 0):
-                    print(f"Warning: missing input frames! {data[i].get('number', 0)}")
-                prev_number = data[i].get("number", -1)
-                now = time.clock_gettime(time.CLOCK_MONOTONIC)
-                real_time_diff = now - prev_now
-                prev_now = now
-                if diff_monotonic > real_time_diff:
-                    pass
-                    #time.sleep(time_diff - real_time_diff)
-                else:
-                    pass
-                    #print(f"Warning: processing is too slow! {time_diff=} {real_time_diff=}")
-                #some func
-                if i == 220:
-                    pass
-                test_now = time.clock_gettime(time.CLOCK_MONOTONIC)
-                result = webcam.get_cmotor_parameters(orientation, 0.1)
-                test_time_passed = time.clock_gettime(time.CLOCK_MONOTONIC) - test_now
-                if diff_monotonic < test_time_passed:
-                    print(f"Warning: processing is too slow! {diff_monotonic=} {test_time_passed=}")
+    os.remove("webcam_test_output.log") if os.path.exists("webcam_test_output.log") else None
+    with open("webcam10.log", "r") as f:
+        lines = f.readlines()
+        data = list(map(json.loads, lines))
+        prev_monotonic = data[0]["monotonic"]- 1
+        if "realtime" in data[0]:
+            prev_realtime = data[0]["realtime"] - 1
+        if "time" in data[0]:
+            prev_time = data[0]["time"] - 1
+        prev_now = time.clock_gettime(time.CLOCK_MONOTONIC)
+        prev_number = -1
+        for i in range(len(data)): 
+            orientation = data[i]["orientation"]
+            diff_monotonic = data[i]["monotonic"] - prev_monotonic
+            prev_monotonic = data[i]["monotonic"]
+            if "realtime" in data[i]:
+                diff_realtime = data[i]["realtime"] - prev_realtime
+                prev_realtime = data[i]["realtime"]
+            else:
+                diff_realtime = 0
+            if "time" in data[i]:
+                diff_time = (data[i]["time"] - prev_time)/1000
+                prev_time = data[i]["time"]
+            else:
+                diff_time = 0
+            if prev_number+1 != data[i].get("number", 0):
+                print(f"Warning: missing input frames! {data[i].get('number', 0)}")
+            prev_number = data[i].get("number", -1)
+            now = time.clock_gettime(time.CLOCK_MONOTONIC)
+            real_time_diff = now - prev_now
+            prev_now = now
+            if diff_monotonic > real_time_diff:
+                pass
+                #time.sleep(time_diff - real_time_diff)
+            else:
+                print(f"Warning: processing is too slow! {diff_monotonic=} {real_time_diff=}")
+            #some func
+            if i == 220:
+                pass
+            test_now = time.clock_gettime(time.CLOCK_MONOTONIC)
+            result = webcam.get_cmotor_parameters(orientation, diff_monotonic)
+            test_time_passed = time.clock_gettime(time.CLOCK_MONOTONIC) - test_now
+            if diff_monotonic < test_time_passed:
+                print(f"Warning: processing is too slow! {diff_monotonic=} {test_time_passed=}")
 
-                with open("webcam_test_output.log", "a") as of:
-                    of.write(json.dumps({
-                        "input": i+1,
-                        "output": list(map(lambda x: list(map(lambda y: round(y,6), x)), result)),
-                        "diff_monotonic": round(diff_monotonic, 6),
-                        "diff_realtime": round(diff_realtime, 6)
-                    }) + "\n")
-        with open("webcam_test_output.log", "r") as of:
-            lines = of.readlines()
-            lines = list(map(json.loads, lines))
-            outputs = map(lambda x: x["output"], lines)
-            outputs_flattened = []
-            for sublist in outputs:
-                for item in sublist:
-                    outputs_flattened.append(item)
-                if len(sublist) == 0:
-                    outputs_flattened.append([0, 0, 0.1])
-            accs = list(map(lambda x: x[0], outputs_flattened))
-            freqs = list(map(lambda x: x[1], outputs_flattened))
-            diffs = list(map(lambda x: x[2], outputs_flattened))
-            max_acc = max(accs, key=abs)
-            max_freq = max(freqs, key=abs)
-            diff_monotonics = list(map(lambda x: x["diff_monotonic"], lines[1:]))
-            max_time_error = max(diff_monotonics, key=lambda x: abs(x - 0.1))
-            print(f"Max acceleration: {max_acc}")
-            print(f"Max frequency: {max_freq}")
-            print(f"Max time error: {max_time_error}")
+            with open("webcam_test_output.log", "a") as of:
+                of.write(json.dumps({
+                    "input": i+1,
+                    "output": list(map(lambda x: list(map(lambda y: round(y,6), x)), result)),
+                    "diff_monotonic": round(diff_monotonic, 6),
+                    "diff_realtime": round(diff_realtime, 6),
+                    "diff_time": round(diff_time, 6)
+                }) + "\n")
+    with open("webcam_test_output.log", "r") as of:
+        lines = of.readlines()
+        lines = list(map(json.loads, lines))
+        outputs = map(lambda x: x["output"], lines)
+        outputs_flattened = []
+        for sublist in outputs:
+            for item in sublist:
+                outputs_flattened.append(item)
+            if len(sublist) == 0:
+                outputs_flattened.append([0, 0, 0.1])
+        accs = list(map(lambda x: x[0], outputs_flattened))
+        freqs = list(map(lambda x: x[1], outputs_flattened))
+        diffs = list(map(lambda x: x[2], outputs_flattened))
+        max_acc = max(accs, key=abs)
+        max_freq = max(freqs, key=abs)
+        diff_monotonics = list(map(lambda x: x["diff_monotonic"], lines[1:]))
+        max_monotonic_error = max(diff_monotonics, key=lambda x: abs(x - 0.1))
+        diff_times = list(map(lambda x: x["diff_time"], lines[1:]))
+        max_time_error = max(diff_times, key=lambda x: abs(x - 0.1))
+        print(f"Max acceleration: {max_acc}")
+        print(f"Max frequency: {max_freq}")
+        print(f"Max monotonic error: {max_monotonic_error}")
+        print(f"Max time error: {max_time_error}")
 
-            fig, axs = plt.subplots(4, 1, figsize=(8, 5))
-            axs[0].plot(accs) 
-            axs[0].set_title("Acceleration (rad/s²)")
-            axs[0].grid()
-            axs[1].plot(freqs)
-            axs[1].set_title("Frequency (Hz)")
-            axs[1].grid()
-            axs[2].plot(diffs)
-            axs[2].set_title("Duration (s)")
-            axs[2].grid()
-            axs[3].plot(diff_monotonics)
-            axs[3].set_title("Input time difference (s)")
-            axs[3].grid()
-            fig.tight_layout(rect=[0, 0, 1, 0.95])  # leave more space at the top
-            
-            # TODO: ustalić MAX_ACCELERATION i zbadać problem max_time_error (jak bardzo występuje po przejściu na UDP)
+        fig, axs = plt.subplots(5, 1, figsize=(16, 10))
+        axs[0].plot(accs) 
+        axs[0].set_title("Acceleration (rad/s²)")
+        axs[0].grid()
+        axs[1].plot(freqs)
+        axs[1].set_title("Frequency (Hz)")
+        axs[1].grid()
+        axs[2].plot(diffs)
+        axs[2].set_title("Duration (s)")
+        axs[2].grid()
+        axs[3].plot(diff_monotonics)
+        axs[3].set_title("Input monotonic difference (s)")
+        axs[3].grid()
+        axs[4].plot(diff_times)
+        axs[4].set_title("Input time difference (s)")
+        axs[4].grid()
+        fig.tight_layout(rect=[0, 0, 1, 0.95])  # leave more space at the top
+        
+        # TODO: ustalić MAX_ACCELERATION i zbadać problem max_time_error (jak bardzo występuje po przejściu na UDP)
     plt.show()
 
 if __name__ == "__main__":
