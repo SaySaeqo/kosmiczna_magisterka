@@ -203,13 +203,6 @@ static double get_angle(struct Quaternion q1, struct Quaternion q2)
     return atan2(2*(dp.w*dp.y + dp.x*dp.z), 1 - 2*(dp.y*dp.y + dp.z*dp.z));
 }
 
-static double clamp(double value, double min, double max) {
-    if (value < min) return min;
-    if (value > max) return max;
-    return value;
-}
-
-
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 static bool g_server_is_running = false;
@@ -236,7 +229,7 @@ static void* rotation_server_thread(void* arg)
         if (g_frequency != 0) {
             g_frequency += g_acceleration/fabs(g_frequency);
 
-            g_frequency = clamp(g_frequency, -MAX_FREQUENCY, MAX_FREQUENCY);
+            g_frequency = fmax(fmin(g_frequency, MAX_FREQUENCY), -MAX_FREQUENCY);
             g_frequency = fabs(g_frequency) < MIN_FREQUENCY ? 0.0 : g_frequency;
         } else {
             g_frequency = copysign(MIN_FREQUENCY, g_acceleration);
@@ -341,7 +334,7 @@ static PyObject* rotation_client(PyObject* self, PyObject* args)
     if (g_angle > 0) {
         // Update acceleration to reach the target angle in the given time
         g_acceleration = (2*g_angle-g_frequency*REACH_TIME)/(REACH_TIME*REACH_TIME);
-        g_acceleration = clamp(g_acceleration, -MAX_ACCELERATION, MAX_ACCELERATION);
+        g_acceleration = fmax(fmin(g_acceleration, MAX_ACCELERATION), -MAX_ACCELERATION);
         g_acceleration *= INERTIA_PLATFORM2WHEEL_RATIO; // adjust for platform angle
 
         if (g_angle == angle_steps) {
