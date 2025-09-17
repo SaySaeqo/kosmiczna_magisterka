@@ -465,7 +465,6 @@ static PyMethodDef fast_motor_funcs[] = {
 
 static PyModuleDef_Slot fast_motor_module_slots[] = {
     {Py_mod_exec, fast_motor_module_exec},
-    {Py_mod_multiple_interpreters, Py_MOD_MULTIPLE_INTERPRETERS_NOT_SUPPORTED},
     {0, NULL}
 };
 
