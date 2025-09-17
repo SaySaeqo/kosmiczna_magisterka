@@ -208,8 +208,8 @@ static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 static bool g_server_is_running = false;
 #define NO_VALUE -10
 static struct Quaternion g_position = {NO_VALUE, NO_VALUE, NO_VALUE, 1};
-static double g_frequency = 0;
-static double g_acceleration = 0;
+static double g_frequency = 0.0;
+static double g_acceleration = 0.0;
 static long g_angle = 0;
 #define INTERVAL 0.1
 #define REACH_TIME (INTERVAL*2)
@@ -226,7 +226,7 @@ static void* rotation_server_thread(void* arg)
     while (g_server_is_running) {
         
         // Update frequency based on acceleration
-        if (g_frequency != 0) {
+        if (g_frequency != 0.0) {
             g_frequency += g_acceleration/fabs(g_frequency);
 
             g_frequency = fmax(fmin(g_frequency, MAX_FREQUENCY), -MAX_FREQUENCY);
@@ -241,8 +241,8 @@ static void* rotation_server_thread(void* arg)
             gpioWrite(ENABLE_PIN, 1);
             pthread_cond_wait(&cond, &lock);
             gpioWrite(ENABLE_PIN, 0);
-        } else if (g_frequency != 0) {
-            int dir = g_frequency < 0 ? 1 : 0;
+        } else if (g_frequency != 0.0) {
+            int dir = g_frequency < 0.0 ? 1 : 0;
             write_dir(dir);
             long sleep_time = labs((long)(500000000/g_frequency));
 
@@ -254,7 +254,7 @@ static void* rotation_server_thread(void* arg)
             pthread_mutex_lock(&lock);
 
             g_angle += dir ? 1 : -1;
-        } else if (g_acceleration != 0) {
+        } else if (g_acceleration != 0.0) {
             pthread_mutex_unlock(&lock);
             long sleep_time = 1000000000/MIN_FREQUENCY;
             SLEEP(sleep_time)
