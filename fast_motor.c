@@ -245,7 +245,9 @@ static void* rotation_server_thread(void* arg)
         // Generate step signal or wait
         if (g_angle == 0) {
             g_frequency = 0.0;
+            gpioWrite(ENABLE_PIN, 1);
             pthread_cond_wait(&cond, &lock);
+            gpioWrite(ENABLE_PIN, 0);
         } else if (g_frequency != 0) {
             write_dir(g_frequency < 0 ? 1 : 0);
             long sleep_time = labs((long)(500000000/g_frequency));

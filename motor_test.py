@@ -11,6 +11,10 @@ rpi_gpio_stub.HIGH = 1
 rpi_gpio_stub.LOW = 0
 pigpio_stub = types.ModuleType("pigpio")
 sys.modules["pigpio"] = pigpio_stub
+kosmiczna_magisterka_stub = types.ModuleType("kosmiczna_magisterka")
+sys.modules["kosmiczna_magisterka"] = kosmiczna_magisterka_stub
+kosmiczna_magisterka_fast_motor_stub = types.ModuleType("kosmiczna_magisterka.fast_motor")
+sys.modules["kosmiczna_magisterka.fast_motor"] = kosmiczna_magisterka_fast_motor_stub
 class pi_stub:
     def __init__(self):
         self.hardware_PWM = lambda gpio, frequency, dutycycle: None
@@ -329,9 +333,13 @@ def test_quest_input():
     plt.show()
 
 def test_input_on_pi():
+    sys.modules.pop("kosmiczna_magisterka", None)
+    sys.modules.pop("kosmiczna_magisterka.fast_motor", None)
     import kosmiczna_magisterka.fast_motor as cmotor
     cmotor.setup()
     cmotor.rotation_server()
+    webcam.disable_motor = False
+    print("Test started")
     with open("webcam.log", "r") as f:
         lines = f.readlines()
         data = list(map(json.loads, lines))
