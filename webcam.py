@@ -195,7 +195,7 @@ async def rotate(request: web.Request) -> web.Response:
 
 
 async def print_queue_size(request: web.Request):
-    print(f"Queue size: 0")
+    cmotor.print_globals()
     return web.Response(status=200)
 
 async def javascript(request: web.Request) -> web.Response:

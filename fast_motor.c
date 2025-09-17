@@ -261,11 +261,16 @@ static void* rotation_server_thread(void* arg)
             pthread_mutex_lock(&lock);
 
             g_angle += dir ? -1 : 1;
-        } else {
+        } else if (g_acceleration != 0) {
+            int dir = g_acceleration < 0 ? 1 : 0;
+            write_dir(dir);
+
             pthread_mutex_unlock(&lock);
             long sleep_time = 1000000000/MIN_FREQUENCY;
             SLEEP(sleep_time)
             pthread_mutex_lock(&lock);
+            
+            g_angle += dir ? -1 : 1;
         }
 
     }
@@ -314,17 +319,19 @@ static PyObject* rotation_client(PyObject* self, PyObject* args)
 
     // Calculate the angle difference
     double angle = get_angle(g_position, target_position);
-    long angle_steps = (long)(angle / ROTATION_PER_STEP);
+    long angle_steps = (long)floor(angle / ROTATION_PER_STEP);
     pthread_mutex_lock(&lock);
     g_angle += angle_steps;
 
-    // Update acceleration to reach the target angle in the given time
-    g_acceleration = (2*g_angle-g_frequency*REACH_TIME)/(REACH_TIME*REACH_TIME);
-    g_acceleration = clamp(g_acceleration, -MAX_ACCELERATION, MAX_ACCELERATION);
-    g_acceleration *= INERTIA_PLATFORM2WHEEL_RATIO; // adjust for platform angle
+    if (g_angle > 0) {
+        // Update acceleration to reach the target angle in the given time
+        g_acceleration = (2*g_angle-g_frequency*REACH_TIME)/(REACH_TIME*REACH_TIME);
+        g_acceleration = clamp(g_acceleration, -MAX_ACCELERATION, MAX_ACCELERATION);
+        g_acceleration *= INERTIA_PLATFORM2WHEEL_RATIO; // adjust for platform angle
 
-    if (g_angle == angle_steps) {
-        pthread_cond_signal(&cond);
+        if (g_angle == angle_steps) {
+            pthread_cond_signal(&cond);
+        }
     }
     pthread_mutex_unlock(&lock);
     Py_END_ALLOW_THREADS
@@ -332,6 +339,13 @@ static PyObject* rotation_client(PyObject* self, PyObject* args)
     Py_RETURN_NONE;
 }
 
+static PyObject* print_globals(PyObject* self)
+{
+    pthread_mutex_lock(&lock);
+    printf("g_angle: %ld, g_frequency: %f, g_acceleration: %f\n", g_angle, g_frequency, g_acceleration);
+    pthread_mutex_unlock(&lock);
+    Py_RETURN_NONE;
+}
 
 static PyObject* stop_rotation(PyObject* self)
 {
@@ -424,6 +438,12 @@ static PyMethodDef fast_motor_funcs[] = {
         stop_rotation,
         METH_NOARGS,
         "Stops the rotation server."
+    },
+    {    
+        "print_globals",
+        print_globals,
+        METH_NOARGS,
+        "Prints global variables for debugging."
     },
 	{NULL, NULL, 0, NULL} // Sentinel
 };
