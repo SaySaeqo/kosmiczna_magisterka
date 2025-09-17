@@ -323,11 +323,11 @@ static PyObject* rotation_client(PyObject* self, PyObject* args)
     }
     
     Py_BEGIN_ALLOW_THREADS
+    pthread_mutex_lock(&lock);
 
     // Calculate the angle difference
     double angle = get_angle(g_position, target_position);
     long angle_steps = (long)floor(angle / ROTATION_PER_STEP);
-    pthread_mutex_lock(&lock);
     g_position = target_position;
     g_angle += angle_steps;
 
