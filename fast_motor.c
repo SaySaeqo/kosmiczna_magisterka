@@ -328,8 +328,11 @@ static PyObject* rotation_client(PyObject* self, PyObject* args)
     // Calculate the angle difference
     double angle = get_angle(g_position, target_position);
     long angle_steps = (long)floor(angle / ROTATION_PER_STEP);
-    g_position = target_position;
-    g_angle += angle_steps;
+
+    if (angle_steps > 16) {
+        g_position = target_position;
+        g_angle += angle_steps;
+    }
 
     if (g_angle > 0) {
         // Update acceleration to reach the target angle in the given time
