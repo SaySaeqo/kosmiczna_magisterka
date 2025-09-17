@@ -5,6 +5,7 @@
 #include <time.h>
 #include <math.h>
 #include <stdbool.h>
+#include <pthread.h>
 #define ASSERT_SUCCESS(status, msg) \
     if (status < 0) { \
         PyErr_SetString(PyExc_Exception, msg); \
@@ -49,41 +50,7 @@
 
 static struct timespec signal_min_start;
 
-static void fast_motor_atexit(void) {
-    gpioTerminate();
-}
 
-static int
-fast_motor_module_exec(PyObject *m)
-{
-    ASSERT_SUCCESS(gpioInitialise(), "Failed to initialize PIGPIO");
-    ASSERT_SUCCESS(Py_AtExit(fast_motor_atexit), "Failed to register PIGPIO exit handler");
-    ASSERT_SUCCESS(gpioSetMode(STEP_PIN, PI_OUTPUT), "Failed to set GPIO mode");
-    ASSERT_SUCCESS(gpioSetMode(ENABLE_PIN, PI_OUTPUT), "Failed to set GPIO mode");
-    ASSERT_SUCCESS(gpioSetMode(DIR_PIN, PI_OUTPUT), "Failed to set GPIO mode");
-    ASSERT_SUCCESS(gpioSetMode(M1_PIN, PI_OUTPUT), "Failed to set GPIO mode");
-    ASSERT_SUCCESS(gpioSetMode(M2_PIN, PI_OUTPUT), "Failed to set GPIO mode");
-    ASSERT_SUCCESS(gpioSetMode(M3_PIN, PI_OUTPUT), "Failed to set GPIO mode");
-    ASSERT_SUCCESS(gpioWrite(STEP_PIN, 0), "Failed to write to GPIO");
-    ASSERT_SUCCESS(gpioWrite(DIR_PIN, 0), "Failed to write to GPIO");
-    ASSERT_SUCCESS(gpioWrite(M1_PIN, 1), "Failed to write to GPIO");
-    ASSERT_SUCCESS(gpioWrite(M2_PIN, 1), "Failed to write to GPIO");
-    ASSERT_SUCCESS(gpioWrite(M3_PIN, 1), "Failed to write to GPIO");
-    clock_gettime(CLOCK_MONOTONIC, &signal_min_start);
-    return 0;
-}
-
-static PyObject* setup_motor(PyObject* self)
-{
-    ASSERT_SUCCESS_NULL(gpioWrite(ENABLE_PIN, 0), "Failed to write to GPIO");
-    Py_RETURN_NONE;
-}
-
-static PyObject* cleanup_motor(PyObject* self)
-{
-    ASSERT_SUCCESS_NULL(gpioWrite(ENABLE_PIN, 1), "Failed to write to GPIO");
-    Py_RETURN_NONE;
-}
 
 static int dir_value = 0;
 
@@ -210,6 +177,208 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     Py_RETURN_NONE;
 }
 
+struct Quaternion {
+
+    double x;
+    double y;
+    double z;
+    double w;
+};
+
+static double get_angle(struct Quaternion q1, struct Quaternion q2)
+{
+    struct Quaternion cf = {
+        .x = -q1.x,
+        .y = -q1.y,
+        .z = -q1.z,
+        .w = q1.w
+    };
+    struct Quaternion dp = {
+        .x = q2.w*cf.x + q2.x*cf.w + q2.y*cf.z - q2.z*cf.y,
+        .y = q2.w*cf.y - q2.x*cf.z + q2.y*cf.w + q2.z*cf.x,
+        .z = q2.w*cf.z + q2.x*cf.y - q2.y*cf.x + q2.z*cf.w,
+        .w = q2.w*cf.w - q2.x*cf.x - q2.y*cf.y - q2.z*cf.z
+    };
+
+    return atan2(2*(dp.w*dp.y + dp.x*dp.z), 1 - 2*(dp.y*dp.y + dp.z*dp.z));
+}
+
+static double clamp(double value, double min, double max) {
+    if (value < min) return min;
+    if (value > max) return max;
+    return value;
+}
+
+
+static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
+static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
+static bool g_server_is_running = false;
+#define NO_VALUE -10
+static struct Quaternion g_position = {NO_VALUE, NO_VALUE, NO_VALUE, 1};
+static double g_frequency = 0;
+static double g_acceleration = 0;
+static long g_angle = 0;
+#define INTERVAL 0.1
+#define REACH_TIME (INTERVAL*2)
+#define MAX_FREQUENCY 15000
+#define MAX_ACCELERATION 2400
+#define MIN_FREQUENCY 200
+
+static void* rotation_server_thread(void* arg)
+{
+    pthread_mutex_lock(&lock);
+    SLEEP_PREP
+    g_server_is_running = true;
+
+    while (g_server_is_running) {
+        
+        // Update frequency based on acceleration
+        if (g_frequency != 0) {
+            g_frequency += g_acceleration/fabs(g_frequency);
+
+            g_frequency = clamp(g_frequency, -MAX_FREQUENCY, MAX_FREQUENCY);
+            g_frequency = fabs(g_frequency) < MIN_FREQUENCY ? 0.0 : g_frequency;
+        } else {
+            g_frequency = copysign(MIN_FREQUENCY, g_acceleration);
+        }
+
+        // Generate step signal or wait
+        if (g_angle == 0) {
+            g_frequency = 0.0;
+            pthread_cond_wait(&cond, &lock);
+        } else if (g_frequency != 0) {
+            write_dir(g_frequency < 0 ? 1 : 0);
+            long sleep_time = labs((long)(500000000/g_frequency));
+
+            pthread_mutex_unlock(&lock);
+            SLEEP(sleep_time)
+            gpioWrite(STEP_PIN, 1);
+            SLEEP(sleep_time)
+            gpioWrite(STEP_PIN, 0);
+            pthread_mutex_lock(&lock);
+
+            g_angle -= 1;
+        } else {
+            pthread_mutex_unlock(&lock);
+            long sleep_time = 1000000000/MIN_FREQUENCY;
+            SLEEP(sleep_time)
+            pthread_mutex_lock(&lock);
+        }
+
+    }
+
+    pthread_mutex_unlock(&lock);
+    return NULL;
+}
+
+static PyObject* rotation_server(PyObject* self)
+{
+    if (g_server_is_running) {
+        PyErr_SetString(PyExc_Exception, "Rotation server is already running");
+        return NULL;
+    }
+
+    pthread_t thread_id;
+    if (pthread_create(&thread_id, NULL, rotation_server_thread, NULL) != 0) {
+        PyErr_SetString(PyExc_Exception, "Failed to create rotation server thread");
+        return NULL;
+    }
+    pthread_detach(thread_id);
+
+    Py_RETURN_NONE;
+}
+
+
+static PyObject* rotation_client(PyObject* self, PyObject* args)
+{
+    double x, y, z, w;
+    if (!PyArg_ParseTuple(args, "dddd", &x, &y, &z, &w))
+    {
+        return NULL;
+    }
+
+    struct Quaternion target_position = {x, y, z, w};
+    if (g_position.x == NO_VALUE) {
+        g_position = target_position;
+        Py_RETURN_NONE;
+    }
+    if (g_server_is_running == false) {
+        PyErr_SetString(PyExc_Exception, "Rotation server is not running");
+        return NULL;
+    }
+    
+    Py_BEGIN_ALLOW_THREADS
+
+    // Calculate the angle difference
+    double angle = get_angle(g_position, target_position);
+    long angle_steps = (long)(angle / ROTATION_PER_STEP);
+    pthread_mutex_lock(&lock);
+    g_angle += angle_steps;
+
+    // Update acceleration to reach the target angle in the given time
+    g_acceleration = (2*g_angle-g_frequency*REACH_TIME)/(REACH_TIME*REACH_TIME);
+    g_acceleration *= INERTIA_PLATFORM2WHEEL_RATIO; // adjust for platform angle
+    g_acceleration = clamp(g_acceleration, -MAX_ACCELERATION, MAX_ACCELERATION);
+
+    if (g_angle == angle_steps) {
+        pthread_cond_signal(&cond);
+    }
+    pthread_mutex_unlock(&lock);
+    Py_END_ALLOW_THREADS
+
+    Py_RETURN_NONE;
+}
+
+
+static PyObject* stop_rotation(PyObject* self)
+{
+    Py_BEGIN_ALLOW_THREADS
+    pthread_mutex_lock(&lock);
+    g_server_is_running = false;
+    pthread_mutex_unlock(&lock);
+    Py_END_ALLOW_THREADS
+    Py_RETURN_NONE;
+}
+
+static PyObject* cleanup_motor(PyObject* self)
+{
+    ASSERT_SUCCESS_NULL(gpioWrite(ENABLE_PIN, 1), "Failed to write to GPIO");
+    Py_RETURN_NONE;
+}
+
+static void fast_motor_atexit(void) {
+    g_server_is_running = false;
+    gpioWrite(ENABLE_PIN, 1);
+    gpioTerminate();
+}
+
+static int
+fast_motor_module_exec(PyObject *m)
+{
+    ASSERT_SUCCESS(gpioInitialise(), "Failed to initialize PIGPIO");
+    ASSERT_SUCCESS(Py_AtExit(fast_motor_atexit), "Failed to register PIGPIO exit handler");
+    ASSERT_SUCCESS(gpioSetMode(STEP_PIN, PI_OUTPUT), "Failed to set GPIO mode");
+    ASSERT_SUCCESS(gpioSetMode(ENABLE_PIN, PI_OUTPUT), "Failed to set GPIO mode");
+    ASSERT_SUCCESS(gpioSetMode(DIR_PIN, PI_OUTPUT), "Failed to set GPIO mode");
+    ASSERT_SUCCESS(gpioSetMode(M1_PIN, PI_OUTPUT), "Failed to set GPIO mode");
+    ASSERT_SUCCESS(gpioSetMode(M2_PIN, PI_OUTPUT), "Failed to set GPIO mode");
+    ASSERT_SUCCESS(gpioSetMode(M3_PIN, PI_OUTPUT), "Failed to set GPIO mode");
+    ASSERT_SUCCESS(gpioWrite(STEP_PIN, 0), "Failed to write to GPIO");
+    ASSERT_SUCCESS(gpioWrite(DIR_PIN, 0), "Failed to write to GPIO");
+    ASSERT_SUCCESS(gpioWrite(M1_PIN, 1), "Failed to write to GPIO");
+    ASSERT_SUCCESS(gpioWrite(M2_PIN, 1), "Failed to write to GPIO");
+    ASSERT_SUCCESS(gpioWrite(M3_PIN, 1), "Failed to write to GPIO");
+    clock_gettime(CLOCK_MONOTONIC, &signal_min_start);
+    return 0;
+}
+
+static PyObject* setup_motor(PyObject* self)
+{
+    ASSERT_SUCCESS_NULL(gpioWrite(ENABLE_PIN, 0), "Failed to write to GPIO");
+    Py_RETURN_NONE;
+}
+
+
 static PyMethodDef fast_motor_funcs[] = {
     {	
         "generate_signal_prep",
@@ -234,6 +403,24 @@ static PyMethodDef fast_motor_funcs[] = {
         cleanup_motor,
         METH_NOARGS,
         "Cleans up the motor by resetting GPIO pins."
+    },
+    {    
+        "rotation_server",
+        rotation_server,
+        METH_NOARGS,
+        "Starts the rotation server in a separate thread."
+    },
+    {    
+        "rotation_client",
+        rotation_client,
+        METH_VARARGS,
+        "Sends target rotation to the server."
+    },
+    {    
+        "stop_rotation",
+        stop_rotation,
+        METH_NOARGS,
+        "Stops the rotation server."
     },
 	{NULL, NULL, 0, NULL} // Sentinel
 };

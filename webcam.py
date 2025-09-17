@@ -9,8 +9,6 @@ from typing import Optional
 import math
 import time
 import motor
-import threading
-import queue as thread_queue
 
 from aiohttp import web
 from aiortc import (
@@ -20,6 +18,7 @@ from aiortc import (
     RTCSessionDescription,
 )
 from aiortc.contrib.media import MediaPlayer, MediaRelay
+import kosmiczna_magisterka.fast_motor as cmotor
 
 ROOT = os.path.dirname(__file__)
 cert_path = os.path.join("/etc/ssl/mycerts", "server_rsa.crt")
@@ -29,34 +28,10 @@ pcs = set()
 relay = None
 webcam = None
 disable_motor = True
-ctx = None
-queue = None
-motor_thread = None
 
 def LOG2FILE(json):
     with open("webcam.log", "a") as f:
         f.write(json + "\n")
-
-def cmotor_worker(q):
-    try:
-        import kosmiczna_magisterka.fast_motor as cmotor
-        cmotor.setup()
-        for task in iter(q.get, None):
-            cmotor.generate_signal(task)
-            q.task_done()
-    except KeyboardInterrupt: ...
-    finally:
-        cmotor.cleanup()
-
-def cmotor_worker_mock(q):
-    try:
-        for task in iter(q.get, None):
-            acceleration, start_freq, duration = task
-            print(f"Mock motor: acc={acceleration:.2f} start_freq={start_freq} duration={duration:.2f}")
-            time.sleep(duration)
-            q.task_done()
-    except KeyboardInterrupt: ...
-
 
 def create_local_tracks(
     play_from: str, decode: bool
@@ -203,18 +178,14 @@ def handle_rotate(json_params):
 
 
     current_orientation = json_params["orientation"]
-    now = time.clock_gettime(time.CLOCK_MONOTONIC)
-    json_params["monotonic"] = now
-    json_params["realtime"] = time.time()
-    LOG2FILE(json.dumps(json_params))
+    #now = time.clock_gettime(time.CLOCK_MONOTONIC)
+    #json_params["monotonic"] = now
+    #json_params["realtime"] = time.time()
+    #LOG2FILE(json.dumps(json_params))
 
-    # Calculate time_diff, angle and save new position
-    global last_rot_time
-    time_diff = now - last_rot_time
-    last_rot_time = now
-
-    for task in get_cmotor_parameters(current_orientation, time_diff):
-        queue.put(task)
+    x,y,z,w = current_orientation["x"], current_orientation["y"], current_orientation["z"], current_orientation["w"]
+    if not disable_motor:
+        cmotor.rotation_client(x,y,z,w)
 
 async def rotate(request: web.Request) -> web.Response:
     # Get parameters
@@ -224,8 +195,7 @@ async def rotate(request: web.Request) -> web.Response:
 
 
 async def print_queue_size(request: web.Request):
-    global queue
-    print(f"Queue size: {queue.qsize()}")
+    print(f"Queue size: 0")
     return web.Response(status=200)
 
 async def javascript(request: web.Request) -> web.Response:
@@ -296,15 +266,6 @@ async def on_shutdown(app: web.Application) -> None:
     # If a shared webcam was opened, stop it.
     if webcam is not None:
         webcam.video.stop()
-    
-    global motor_thread, queue
-    if queue is not None:
-        queue.put(None)          # sentinel
-    if motor_thread is not None:
-        motor_thread.join(timeout=2.0)
-        motor_thread = None
-    queue = None
-
 
 
 if __name__ == "__main__":
@@ -361,13 +322,9 @@ if __name__ == "__main__":
     app.router.add_post("/offer", offer)
     app.router.add_post("/rotate", rotate)
 
-    queue = thread_queue.Queue()
     if not args.disable_motor:
         disable_motor = args.disable_motor
-        motor_thread = threading.Thread(target=cmotor_worker, args=(queue,), daemon=True)
-        motor_thread.start()
-    else:
-        motor_thread = threading.Thread(target=cmotor_worker_mock, args=(queue,), daemon=True)
-        motor_thread.start()
+        cmotor.setup()
+        cmotor.rotation_server()
 
     web.run_app(app, host=args.host, port=args.port, ssl_context=ssl_context)
