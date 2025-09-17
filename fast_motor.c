@@ -350,8 +350,11 @@ static PyObject* rotation_client(PyObject* self, PyObject* args)
 static PyObject* print_globals(PyObject* self, PyObject* noarg)
 {
     pthread_mutex_lock(&lock);
-    printf("g_angle: %ld, g_frequency: %f, g_acceleration: %f\n", g_angle, g_frequency, g_acceleration);
+    long angle = g_angle;
+    double frequency = g_frequency;
+    double acceleration = g_acceleration;
     pthread_mutex_unlock(&lock);
+    printf("g_angle: %ld, g_frequency: %f, g_acceleration: %f\n", angle, frequency, acceleration);
     Py_RETURN_NONE;
 }
 
