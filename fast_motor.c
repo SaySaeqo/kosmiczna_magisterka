@@ -327,9 +327,9 @@ static PyObject* rotation_client(PyObject* self, PyObject* args)
 
     // Calculate the angle difference
     double angle = get_angle(g_position, target_position);
-    long angle_steps = (long)floor(angle / ROTATION_PER_STEP);
+    long angle_steps = (long)floor(angle / ROTATION_PER_STEP * INERTIA_PLATFORM2WHEEL_RATIO);
 
-    if (angle_steps > 16) {
+    if (angle_steps > 32) {
         g_position = target_position;
         g_angle += angle_steps;
     }
