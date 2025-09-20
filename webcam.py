@@ -48,12 +48,18 @@ def create_local_tracks(
         # In order to serve the same webcam to multiple users we make use of
         # a `MediaRelay`. The webcam will stay open, so it is our responsability
         # to stop the webcam when the application shuts down in `on_shutdown`.
+        #options = {
+            #"framerate": "10",
+            #"video_size": "1280x480",
+            #"input_format": "yuv420p",
+            #"thread_queue_size": "1024",
+            #"c:v": "h264_v4l2m2m"
+        #}
         options = {
-            "framerate": "10",
-            "video_size": "1280x480",
-            "input_format": "yuv420p",
+            "framerate": "30",
+            "video_size": "2560x720",
+            "input_format": "mjpeg",
             "thread_queue_size": "1024",
-            "c:v": "h264_v4l2m2m"
         }
         if relay is None:
             if platform.system() == "Darwin":

@@ -70,6 +70,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     <div id="hud">Loading…</div>
     <div id="errors"></div>
     <main style='text-align: center;'>
+        <!-- Fallback video preview for non-WebXR clients -->
+        <div id="fallback-video" style="margin-top:40px;">
+            <h2 style="color:white;">Live Video Preview</h2>
+            <video id="video-preview" autoplay playsinline muted style="max-width:80vw; max-height:60vh; border:2px solid #fff; background:#222;"></video>
+            <p style="color:gray;">If you see nothing, make sure your WebRTC connection is established.</p>
+        </div>
     </main>
     <script src="https://immersive-web.github.io/webxr-layers-polyfill/build/webxr-layers-polyfill.js"></script>
     <script>
@@ -98,7 +104,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
             let sendRotationButton = document.getElementById('send-rotation');
 
-            let video = document.createElement('video');
+            // Use the video element for both XR and fallback preview
+            let video = document.getElementById('video-preview');
             video.autoplay = true;
             video.playsinline = true;
             video.muted = true;
@@ -143,6 +150,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 pc.ontrack = ev => {
                     video.srcObject = ev.streams[0];
                     video.play();
+                    // Show fallback preview if not in XR
+                    document.getElementById('fallback-video').style.display = '';
                 };
                 const offer = await pc.createOffer({ offerToReceiveVideo: true });
                 await pc.setLocalDescription(offer);
@@ -308,6 +317,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
             await start();
             initXR();
+            // Hide fallback preview if XR is supported and session starts
+            function hideFallbackVideo() {
+                document.getElementById('fallback-video').style.display = 'none';
+            }
+            if (navigator.xr) {
+                navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                    if (supported) {
+                        hideFallbackVideo();
+                    }
+                });
+            }
 
             sendRotationButton.addEventListener('click', () => {
                 rotationDataChannel.send(JSON.stringify({ orientation: {x: 0, y: 0, z: 0, w: 1}, number: sendRotationNumber++ }));
