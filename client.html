@@ -82,8 +82,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         (async function () {
             'use strict';
 
+            let layersPolyfill = null
+            let transform180 = null;
+
             // initialize the polyfill for unsupported devices
-            let layersPolyfill = new WebXRLayersPolyfill()
+            if (navigator.xr) {
+                layersPolyfill = new WebXRLayersPolyfill()
+                transform180 = new XRRigidTransform(
+                    { x: 0, y: 0, z: 0, w: 1 },
+                    { x: 0, y: 0, z: -1, w: 0 }
+                );
+            }
 
             // XR globals.
             let xrButton = document.getElementById('enter');
@@ -91,10 +100,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let xrRefSpace = null;
             let xrMediaFactory = null;
             let xrLayer = null;
-            let transform180 = new XRRigidTransform(
-                { x: 0, y: 0, z: 0, w: 1 },
-                { x: 0, y: 0, z: -1, w: 0 }
-            );
             let lastPoseOrientation = null;
             let sendRotationNumber = 0;
             let sendRotationInterval = null;
@@ -316,22 +321,22 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             }
 
             await start();
-            initXR();
             // Hide fallback preview if XR is supported and session starts
             function hideFallbackVideo() {
                 document.getElementById('fallback-video').style.display = 'none';
             }
             if (navigator.xr) {
+                initXR();
                 navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
                     if (supported) {
                         hideFallbackVideo();
                     }
                 });
+                sendRotationButton.addEventListener('click', () => {
+                    rotationDataChannel.send(JSON.stringify({ orientation: {x: 0, y: 0, z: 0, w: 1}, number: sendRotationNumber++ }));
+                });
             }
 
-            sendRotationButton.addEventListener('click', () => {
-                rotationDataChannel.send(JSON.stringify({ orientation: {x: 0, y: 0, z: 0, w: 1}, number: sendRotationNumber++ }));
-            });
 
         })();
     </script>
