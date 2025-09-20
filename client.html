@@ -55,10 +55,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
     #errors {
         position: absolute;
-        top: 60px;
-        left: 20px;
+        bottom: 60px;
+        right: 30px;
         color: red;
-        z-index: 10;
+        z-index: 15;
         background-color: aliceblue;
     }
 </style>
@@ -73,7 +73,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         <!-- Fallback video preview for non-WebXR clients -->
         <div id="fallback-video" style="margin-top:40px;">
             <h2 style="color:white;">Live Video Preview</h2>
-            <img id="mjpeg" src="http://10.42.0.1:8080/?action=stream" />
+            <img id="mjpeg" src="https://10.42.0.1/feed.mjpg" width="70%" height="auto" />
             <p style="color:gray;">If you see nothing, make sure your WebRTC connection is established.</p>
         </div>
     </main>
@@ -82,12 +82,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         (async function () {
             'use strict';
 
-            let layersPolyfill = null
+            let layersPolyfill = null;
             let transform180 = null;
 
             // initialize the polyfill for unsupported devices
             if (navigator.xr) {
-                layersPolyfill = new WebXRLayersPolyfill()
+                layersPolyfill = new WebXRLayersPolyfill();
                 transform180 = new XRRigidTransform(
                     { x: 0, y: 0, z: 0, w: 1 },
                     { x: 0, y: 0, z: -1, w: 0 }
@@ -131,11 +131,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     gamepad.buttons[index].pressed);
             }
 
+            let errors = document.getElementById('errors');
             window.onerror = (event) => {
-                let errors = document.getElementById('errors');
                 errors.textContent += event.message + '\n';
             };
 
+            errors.textContent += navigator.xr;
             async function iceGatheringIsComplete(pc) {
                 await new Promise((resolve) => {
                     if (pc.iceGatheringState === 'complete') {
