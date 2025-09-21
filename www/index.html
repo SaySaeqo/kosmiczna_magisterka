@@ -258,6 +258,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                             // Optionally pause motor or ignore pose updates
                         }
                     });
+
+                    sendRotationInterval = setInterval(() => {
+                        if (lastPoseOrientation) {
+                            fetch('/rotate', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ orientation: lastPoseOrientation.toJSON(), number: sendRotationNumber++ })
+                            }).catch(e => {
+                                errors.textContent += 'Fetch error: ' + e + '\n';
+                            });
+                        }
+                    }, 100); 
                 } catch (e) {
                     errors.textContent += 'SessionStarted error: ' + e + '\n';
                     session.end();
@@ -267,6 +279,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             function onSessionEnded(event) {
                 xrSession = null;
                 xrButton.textContent = 'Enter VR';
+                if (sendRotationInterval) {
+                    clearInterval(sendRotationInterval);
+                    sendRotationInterval = null;
+                }
             }
 
             function onXRFrame(time, frame) {
