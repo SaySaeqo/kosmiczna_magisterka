@@ -61,6 +61,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
         z-index: 15;
         background-color: aliceblue;
     }
+
+    #fallback-video {
+      display: flex;
+      flex-direction: column;
+      width: 70%;
+      height: auto;
+      margin: auto;
+    }
 </style>
 </head>
 
@@ -71,10 +79,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     <div id="errors"> </div>
     <main style='text-align: center;'>
         <!-- Fallback video preview for non-WebXR clients -->
-        <div id="fallback-video" style="margin-top:40px;">
+        <div id="fallback-video">
             <h2 style="color:white;">Live Video Preview</h2>
-            <img id="mjpeg" src="https://10.42.0.1/feed.mjpg" width="70%" height="auto" />
-            <p style="color:gray;">If you see nothing, make sure your WebRTC connection is established.</p>
+            <img id="mjpeg" src="feed.mjpg" />
+            <p style="color:gray;">If you see nothing, better start praying.</p>
         </div>
     </main>
     <script src="webxr-layers-polyfill.js"></script>
@@ -127,7 +135,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     gl = canvas.getContext('webgl2', { xrCompatible: true });
                     document.body.appendChild(gl.canvas);
                     gl.clearColor(0.0, 0, 0, 0.0);
-                    xrFrameBuffer = gl.createFramebuffer();
                 } catch (e) {
                     errors.textContent += 'WebGL error: ' + e + '\n';
                 }
@@ -145,7 +152,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                     // TEXTURE_CUBE_MAP expects the Y to be flipped for the faces and it already
                     // is flipped in our texture image.
-                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                    //gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
                     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
                     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, imageElement);
                     gl.bindTexture(gl.TEXTURE_2D, null);
@@ -224,7 +231,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             };
 
             function onSessionStarted(session) {
-                errors.textContent += "Session started\n";
                 try {
                     xrSession = session;
                     xrButton.textContent = 'Exit VR';
@@ -242,10 +248,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                     session.requestReferenceSpace('local').then((refSpace) => {
                         xrRefSpace = refSpace;
-                        projLayer = xrGLFactory.createProjectionLayer({ space: xrRefSpace, stencil: false });
-                        session.updateRenderState({ layers: [projLayer] });
                         eqrtLayer = getLayer(transform180);
-                        session.updateRenderState({ layers: [projLayer, eqrtLayer] });
+                        session.updateRenderState({ layers: [eqrtLayer] });
 
                         session.requestAnimationFrame(onXRFrame);
                     }).catch(e => {
@@ -309,19 +313,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                             hud.textContent += `\nTracking lost on frame ${sendRotationNumber}`;
                         }
 
-                        gl.bindFramebuffer(gl.FRAMEBUFFER, xrFrameBuffer);
-
-                        for (let view of pose.views) {
-                            let glayer = xrGLFactory.getViewSubImage(projLayer, view);
-                            glayer.framebuffer = xrFrameBuffer;
-                            let viewport = glayer.viewport;
-
-                            gl.bindFramebuffer(gl.FRAMEBUFFER, xrFrameBuffer);
-                            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glayer.colorTexture, 0);
-                            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, glayer.depthStencilTexture, 0);
-                        }
-                    }
-                    else {
+                    } else {
                         hud.textContent += `\nNo pose on frame ${sendRotationNumber}`;
                     }
 
@@ -329,7 +321,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                         hud.textContent += `\nSent ${sendRotationNumber} rotations`;
                         once = false;
                     }
-
 
                     session.requestAnimationFrame(onXRFrame);
                 } catch (e) {
