@@ -135,6 +135,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     gl = canvas.getContext('webgl2', { xrCompatible: true });
                     document.body.appendChild(gl.canvas);
                     gl.clearColor(0.0, 0, 0, 0.0);
+
+                    // Vertex shader: pass through positions and UVs
+                    let vs = gl.createShader(gl.VERTEX_SHADER);
+                    gl.shaderSource(vs, `#version 300 es
+                    in vec2 a;
+                    out vec2 v;
+                    void main(){v=a*0.5+0.5;gl_Position=vec4(a,0,1);}`);
+                    gl.compileShader(vs);
+
+                    // Fragment shader: flip X and Y for MJPEG image
+                    // v.x is horizontal, v.y is vertical
+                    // Flipping both axes: vec2(1.0-v.x, 1.0-v.y)
+                    let fs = gl.createShader(gl.FRAGMENT_SHADER);
+                    gl.shaderSource(fs, `#version 300 es
+                    precision mediump float;
+                    in vec2 v;
+                    uniform sampler2D t;
+                    out vec4 o;
+                    void main(){
+                        // Flip horizontally and vertically
+                        o = texture(t, vec2(1.0 - v.x, v.y));
+                    }`);
+                    gl.compileShader(fs);
                 } catch (e) {
                     errors.textContent += 'WebGL error: ' + e + '\n';
                 }
@@ -153,7 +176,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     // TEXTURE_CUBE_MAP expects the Y to be flipped for the faces and it already
                     // is flipped in our texture image.
                     //gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
-                    glayer.colorTexture.x = 1.0 - glayer.colorTexture.x;
                     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
                     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, imageElement);
                     gl.bindTexture(gl.TEXTURE_2D, null);
