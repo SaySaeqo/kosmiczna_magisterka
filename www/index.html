@@ -103,7 +103,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let xrButton = document.getElementById('enter');
             let xrSession = null;
             let xrRefSpace = null;
-            let xrMediaFactory = null;
+            let xrGLFactory = null;
             let xrLayer = null;
             let lastPoseOrientation = null;
             let sendRotationNumber = 0;
@@ -111,29 +111,32 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let sendPrintQueueSizeInterval = null;
             let button4Pressed = false;
             let rotationDataChannel = null;
+            let eqrtLayer = null;
 
             let sendRotationButton = document.getElementById('send-rotation');
 
             // Use the video element for both XR and fallback preview
             let canvas = document.createElement('canvas');
             let gl = null;
-            let texture = null;
+            let xrFrameBuffer = null;
+            let imageElement = document.getElementById("mjpeg");
             try {
                 gl = canvas.getContext('webgl2', { xrCompatible: true });
-                texture = gl.createTexture();
-                gl.bindTexture(gl.TEXTURE_2D, texture);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-                gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                gl.clearColor(0.0, 0, 0, 0.0);
+                xrFrameBuffer = gl.createFramebuffer();
             } catch (e) {
                 errors.textContent += 'WebGL error: ' + e + '\n';
             }
-            function updateTexture() {
+            function updateTexture(frame) {
                 try {
-                    gl.bindTexture(gl.TEXTURE_2D, texture);
-                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,
-                                gl.UNSIGNED_BYTE, document.getElementById("mjpeg"));
+                    let glayer = xrGLFactory.getSubImage(eqrtLayer, frame);
+
+                    // TEXTURE_CUBE_MAP expects the Y to be flipped for the faces and it already
+                    // is flipped in our texture image.
+                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                    gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+                    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, imageElement);
+                    gl.bindTexture(gl.TEXTURE_2D, null);
                 } catch (e) {
                     errors.textContent += 'Texture update error: ' + e + '\n';
                 }
@@ -180,28 +183,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 let angle = 130 * 2 * Math.PI / 360; // 130 degrees in radians
                 let layout = "stereo-left-right";
                 try {
-                    if (transform === undefined) {
-                        return xrMediaFactory.createEquirectLayer({
-                            space: xrRefSpace,
-                            centralHorizontalAngle: angle,
-                            layout: layout,
-                            lowerVerticalAngle: -1.1,
-                            upperVerticalAngle: 1.1,
-                            viewPixelWidth: 2560,
-                            viewPixelHeight: 720
-                        });
-                    } else {
-                        return xrMediaFactory.createEquirectLayer({
-                            space: xrRefSpace,
-                            centralHorizontalAngle: angle,
-                            layout: layout,
-                            lowerVerticalAngle: -1.1,
-                            upperVerticalAngle: 1.1,
-                            transform: transform,
-                            viewPixelWidth: 2560,
-                            viewPixelHeight: 720
-                        });
-                    }
+                    return xrGLFactory.createEquirectLayer({
+                        space: xrRefSpace,
+                        centralHorizontalAngle: angle,
+                        layout: layout,
+                        lowerVerticalAngle: -1.1,
+                        upperVerticalAngle: 1.1,
+                        //transform: transform,
+                        viewPixelWidth: imageElement.width / 2,
+                        viewPixelHeight: imageElement.height
+                    });
                 } catch (e) {
                     errors.textContent += 'Layer error: ' + e + '\n';
                     return null;
@@ -229,16 +220,17 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                     session.addEventListener('end', onSessionEnded);
 
-                    xrMediaFactory = new XRWebGLBinding(session, gl);
-                    if (xrMediaFactory === null || xrMediaFactory === undefined) {
-                      errors.textContent += "Factory: " + xrMediaFactory;
+                    xrGLFactory = new XRWebGLBinding(session, gl);
+                    if (xrGLFactory === null || xrGLFactory === undefined) {
+                      errors.textContent += "Factory: " + xrGLFactory;
                       session.end();
                       return;
                     }
 
                     session.requestReferenceSpace('local').then((refSpace) => {
                         xrRefSpace = refSpace;
-                        session.updateRenderState({ layers: [getLayer(transform180)] });
+                        eqrtLayer = getLayer(transform180);
+                        session.updateRenderState({ layers: [eqrtLayer] });
 
                         session.requestAnimationFrame(onXRFrame);
                     }).catch(e => {
@@ -285,6 +277,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                             }
                         }
                     }
+
+                    updateTexture(frame);
+
                     let pose = frame.getViewerPose(xrRefSpace);
                     if (pose) {
                         //session.updateRenderState({ layers: [getLayer(pose.transform)] }); // works but slow and crashes
@@ -292,7 +287,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                             undefined,
                             multiplyQuaternions(pose.transform.orientation, transform180.orientation)
                         );
-                        xrSession.renderState.layers[0].transform = newTransform;
+                        //xrSession.renderState.layers[0].transform = newTransform;
                         lastPoseOrientation = newTransform.orientation;
 
                         if (pose.emulatedPosition) {
@@ -308,7 +303,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                         once = false;
                     }
 
-                    updateTexture();
 
                     session.requestAnimationFrame(onXRFrame);
                 } catch (e) {
