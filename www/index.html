@@ -144,9 +144,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     void main(){v=a*0.5+0.5;gl_Position=vec4(a,0,1);}`);
                     gl.compileShader(vs);
 
-                    // Fragment shader: flip X and Y for MJPEG image
-                    // v.x is horizontal, v.y is vertical
-                    // Flipping both axes: vec2(1.0-v.x, 1.0-v.y)
+                    // Fragment shader: flip X for MJPEG image
                     let fs = gl.createShader(gl.FRAGMENT_SHADER);
                     gl.shaderSource(fs, `#version 300 es
                     precision mediump float;
@@ -154,10 +152,36 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     uniform sampler2D t;
                     out vec4 o;
                     void main(){
-                        // Flip horizontally and vertically
+                        // Flip horizontally only
                         o = texture(t, vec2(1.0 - v.x, v.y));
                     }`);
                     gl.compileShader(fs);
+
+                    // Minimal program setup
+                    let prog = gl.createProgram();
+                    gl.attachShader(prog, vs);
+                    gl.attachShader(prog, fs);
+                    gl.linkProgram(prog);
+                    gl.useProgram(prog);
+
+                    // Fullscreen quad vertex buffer
+                    let quad = gl.createBuffer();
+                    gl.bindBuffer(gl.ARRAY_BUFFER, quad);
+                    // 2 triangles covering NDC [-1,1]
+                    gl.bufferData(gl.ARRAY_BUFFER, new Float32Array([
+                        -1, -1,  1, -1,  -1, 1,
+                         1, -1,  1, 1,  -1, 1
+                    ]), gl.STATIC_DRAW);
+
+                    // Attribute setup
+                    let loc = gl.getAttribLocation(prog, 'a');
+                    gl.enableVertexAttribArray(loc);
+                    gl.vertexAttribPointer(loc, 2, gl.FLOAT, false, 0, 0);
+
+                    // Texture uniform setup
+                    let texLoc = gl.getUniformLocation(prog, 't');
+                    gl.uniform1i(texLoc, 0); // texture unit 0
+
                 } catch (e) {
                     errors.textContent += 'WebGL error: ' + e + '\n';
                 }
@@ -173,11 +197,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 try {
                     let glayer = xrGLFactory.getSubImage(eqrtLayer, frame);
 
-                    // TEXTURE_CUBE_MAP expects the Y to be flipped for the faces and it already
-                    // is flipped in our texture image.
-                    //gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
                     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
                     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, imageElement);
+                    gl.clear(gl.COLOR_BUFFER_BIT);
+                    gl.drawArrays(gl.TRIANGLES, 0, 6);
                     gl.bindTexture(gl.TEXTURE_2D, null);
                 } catch (e) {
                     errors.textContent += 'Texture update error: ' + e + '\n';
