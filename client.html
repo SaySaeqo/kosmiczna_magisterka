@@ -77,7 +77,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             <p style="color:gray;">If you see nothing, make sure your WebRTC connection is established.</p>
         </div>
     </main>
-    <script src="https://immersive-web.github.io/webxr-layers-polyfill/build/webxr-layers-polyfill.js"></script>
+    <script src="webxr-layers-polyfill.js"></script>
     <script>
         (async function () {
             'use strict';
@@ -88,218 +88,244 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             };
             errors.textContent += navigator.xr;
 
-            let layersPolyfill = null;
-            let transform180 = null;
+                let layersPolyfill = null;
+                let transform180 = null;
 
-            // initialize the polyfill for unsupported devices
-            if (navigator.xr) {
-                layersPolyfill = new WebXRLayersPolyfill();
-                transform180 = new XRRigidTransform(
-                    { x: 0, y: 0, z: 0, w: 1 },
-                    { x: 0, y: 0, z: -1, w: 0 }
-                );
-            }
-
-            // XR globals.
-            let xrButton = document.getElementById('enter');
-            let xrSession = null;
-            let xrRefSpace = null;
-            let xrMediaFactory = null;
-            let xrLayer = null;
-            let lastPoseOrientation = null;
-            let sendRotationNumber = 0;
-            let sendRotationInterval = null;
-            let sendPrintQueueSizeInterval = null;
-            let button4Pressed = false;
-            let rotationDataChannel = null;
-
-            let sendRotationButton = document.getElementById('send-rotation');
-
-            // Use the video element for both XR and fallback preview
-            let canvas = document.createElement('canvas');
-            const gl = canvas.getContext('webgl2');
-            const texture = gl.createTexture();
-            gl.bindTexture(gl.TEXTURE_2D, texture);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-            gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
-            function updateTexture() {
-                gl.bindTexture(gl.TEXTURE_2D, texture);
-                gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,
-                            gl.UNSIGNED_BYTE, document.getElementById("mjpeg"));
-            }
-            let hud = document.getElementById('hud');
-            let once = true;
-
-            function buttonPressedThisFrame(gamepad, index) {
-                return (index < gamepad.buttons.length &&
-                    gamepad.buttons[index].pressed);
-            }
-
-
-            async function iceGatheringIsComplete(pc) {
-                await new Promise((resolve) => {
-                    if (pc.iceGatheringState === 'complete') {
-                        resolve();
-                    } else {
-                        const checkState = () => {
-                            if (pc.iceGatheringState === 'complete') {
-                                pc.removeEventListener('icegatheringstatechange', checkState);
-                                resolve();
-                            }
-                        };
-                        pc.addEventListener('icegatheringstatechange', checkState);
-                    }
-                });
-            }
-
-
-            function initXR() {
+                // initialize the polyfill for unsupported devices
                 if (navigator.xr) {
-                    navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
-                        if (supported) {
-                            xrButton.addEventListener('click', onButtonClicked);
+                        layersPolyfill = new WebXRLayersPolyfill();
+                        transform180 = new XRRigidTransform(
+                            { x: 0, y: 0, z: 0, w: 1 },
+                            { x: 0, y: 0, z: -1, w: 0 }
+                        );
+                }
+
+                // XR globals.
+                let xrButton = document.getElementById('enter');
+                let xrSession = null;
+                let xrRefSpace = null;
+                let xrMediaFactory = null;
+                let xrLayer = null;
+                let lastPoseOrientation = null;
+                let sendRotationNumber = 0;
+                let sendRotationInterval = null;
+                let sendPrintQueueSizeInterval = null;
+                let button4Pressed = false;
+                let rotationDataChannel = null;
+
+                let sendRotationButton = document.getElementById('send-rotation');
+
+                // Use the video element for both XR and fallback preview
+                let canvas = document.createElement('canvas');
+                let gl = null;
+                let texture = null;
+                try {
+                    gl = canvas.getContext('webgl2');
+                    texture = gl.createTexture();
+                    gl.bindTexture(gl.TEXTURE_2D, texture);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
+                } catch (e) {
+                    errors.textContent += 'WebGL error: ' + e + '\n';
+                }
+                function updateTexture() {
+                    try {
+                        gl.bindTexture(gl.TEXTURE_2D, texture);
+                        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA,
+                                    gl.UNSIGNED_BYTE, document.getElementById("mjpeg"));
+                    } catch (e) {
+                        errors.textContent += 'Texture update error: ' + e + '\n';
+                    }
+                }
+                let hud = document.getElementById('hud');
+                let once = true;
+                updateTexture();
+
+                function buttonPressedThisFrame(gamepad, index) {
+                    return (index < gamepad.buttons.length &&
+                        gamepad.buttons[index].pressed);
+                }
+
+
+                async function iceGatheringIsComplete(pc) {
+                    await new Promise((resolve) => {
+                        if (pc.iceGatheringState === 'complete') {
+                            resolve();
                         } else {
-                            xrButton.disabled = true;
-                            xrButton.textContent = 'WebXR not supported';
+                            const checkState = () => {
+                                if (pc.iceGatheringState === 'complete') {
+                                    pc.removeEventListener('icegatheringstatechange', checkState);
+                                    resolve();
+                                }
+                            };
+                            pc.addEventListener('icegatheringstatechange', checkState);
                         }
                     });
                 }
-            }
 
 
-            function onButtonClicked() {
-                if (!xrSession) {
+                function initXR() {
+                    if (navigator.xr) {
+                        navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                            if (supported) {
+                                xrButton.addEventListener('click', onButtonClicked);
+                            } else {
+                                xrButton.disabled = true;
+                                xrButton.textContent = 'WebXR not supported';
+                            }
+                        });
+                    }
+                }
+
+
+                function onButtonClicked() {
+                    if (!xrSession) {
                     navigator.xr.requestSession('immersive-vr', { requiredFeatures: ['layers'] }).then(onSessionStarted);
-                } else {
-                    xrSession.end();
-                }
-            }
-
-            function getLayer(transform) {
-                let angle = 130 * 2 * Math.PI / 360; // 130 degrees in radians
-                let layout = "stereo-left-right";
-                if (transform === undefined) {
-                    return xrMediaFactory.createEquirectLayer({
-                        space: xrRefSpace,
-                        centralHorizontalAngle: angle,
-                        layout: layout,
-                        lowerVerticalAngle: -1.1,
-                        upperVerticalAngle: 1.1,
-                        texture: texture
-                    });
-                } else {
-                    return xrMediaFactory.createEquirectLayer({
-                        space: xrRefSpace,
-                        centralHorizontalAngle: angle,
-                        layout: layout,
-                        lowerVerticalAngle: -1.1,
-                        upperVerticalAngle: 1.1,
-                        transform: transform,
-                        texture: texture
-                    });
-                }
-            }
-
-            function quatToEuler(quat) {
-                const q0 = quat.w;
-                const q1 = quat.x;
-                const q2 = quat.y;
-                const q3 = quat.z;
-                const Rx = Math.atan2(2 * (q0 * q1 + q2 * q3), 1 - (2 * (q1 * q1 + q2 * q2)));
-                const Ry = Math.asin(2 * (q0 * q2 - q3 * q1));
-                const Rz = Math.atan2(2 * (q0 * q3 + q1 * q2), 1 - (2 * (q2 * q2 + q3 * q3)));
-                const euler = [Rx, Ry, Rz];
-                return euler;
-
-            };
-
-            function onSessionStarted(session) {
-                xrSession = session;
-                xrButton.textContent = 'Exit VR';
-
-                session.addEventListener('end', onSessionEnded);
-
-                xrMediaFactory = new XRWebGLBinding(session, gl);
-
-                session.requestReferenceSpace('local').then((refSpace) => {
-                    xrRefSpace = refSpace;
-                    session.updateRenderState({ layers: [getLayer(transform180)] });
-
-                    session.requestAnimationFrame(onXRFrame);
-                });
-
-                session.addEventListener('visibilitychange', () => {
-                    if (xrSession.visibilityState !== "visible") {
-                        hud.textContent += `\n${xrSession.visibilityState}: ${sendRotationNumber}`;
-                        // Optionally pause motor or ignore pose updates
+                    } else {
+                        xrSession.end();
                     }
-                });
-            }
+                }
 
-            function onSessionEnded(event) {
-                xrSession = null;
-                xrButton.textContent = 'Enter VR';
-            }
+                function getLayer(transform) {
+                    let angle = 130 * 2 * Math.PI / 360; // 130 degrees in radians
+                    let layout = "stereo-left-right";
+                    try {
+                        if (transform === undefined) {
+                            return xrMediaFactory.createEquirectLayer({
+                                space: xrRefSpace,
+                                centralHorizontalAngle: angle,
+                                layout: layout,
+                                lowerVerticalAngle: -1.1,
+                                upperVerticalAngle: 1.1,
+                                texture: texture
+                            });
+                        } else {
+                            return xrMediaFactory.createEquirectLayer({
+                                space: xrRefSpace,
+                                centralHorizontalAngle: angle,
+                                layout: layout,
+                                lowerVerticalAngle: -1.1,
+                                upperVerticalAngle: 1.1,
+                                transform: transform,
+                                texture: texture
+                            });
+                        }
+                    } catch (e) {
+                        errors.textContent += 'Layer error: ' + e + '\n';
+                        return null;
+                    }
+                }
 
-            function multiplyQuaternions(q1, q2) {
-                return {
-                    x: q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y,
-                    y: q1.w * q2.y - q1.x * q2.z + q1.y * q2.w + q1.z * q2.x,
-                    z: q1.w * q2.z + q1.x * q2.y - q1.y * q2.x + q1.z * q2.w,
-                    w: q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
+                function quatToEuler(quat) {
+                    const q0 = quat.w;
+                    const q1 = quat.x;
+                    const q2 = quat.y;
+                    const q3 = quat.z;
+                    const Rx = Math.atan2(2 * (q0 * q1 + q2 * q3), 1 - (2 * (q1 * q1 + q2 * q2)));
+                    const Ry = Math.asin(2 * (q0 * q2 - q3 * q1));
+                    const Rz = Math.atan2(2 * (q0 * q3 + q1 * q2), 1 - (2 * (q2 * q2 + q3 * q3)));
+                    const euler = [Rx, Ry, Rz];
+                    return euler;
+
                 };
-            }
 
-            function onXRFrame(time, frame) {
-                let session = frame.session;
+                function onSessionStarted(session) {
+                    try {
+                        xrSession = session;
+                        xrButton.textContent = 'Exit VR';
 
-                for (let source of session.inputSources) {
-                    if (source.gamepad) {
-                        button4Pressed = buttonPressedThisFrame(source.gamepad, 4);
+                        session.addEventListener('end', onSessionEnded);
+
+                        xrMediaFactory = new XRWebGLBinding(session, gl);
+
+                        session.requestReferenceSpace('local').then((refSpace) => {
+                            xrRefSpace = refSpace;
+                            session.updateRenderState({ layers: [getLayer(transform180)] });
+
+                            session.requestAnimationFrame(onXRFrame);
+                        }).catch(e => {
+                            errors.textContent += 'RefSpace error: ' + e + '\n';
+                        });
+
+                        session.addEventListener('visibilitychange', () => {
+                            if (xrSession.visibilityState !== "visible") {
+                                hud.textContent += `\n${xrSession.visibilityState}: ${sendRotationNumber}`;
+                                // Optionally pause motor or ignore pose updates
+                            }
+                        });
+                    } catch (e) {
+                        errors.textContent += 'SessionStarted error: ' + e + '\n';
                     }
                 }
-                let pose = frame.getViewerPose(xrRefSpace);
-                if (pose) {
-                    //session.updateRenderState({ layers: [getLayer(pose.transform)] }); // works but slow and crashes
-                    let newTransform = new XRRigidTransform(
-                        undefined,
-                        multiplyQuaternions(pose.transform.orientation, transform180.orientation)
-                    );
-                    xrSession.renderState.layers[0].transform = newTransform;
-                    lastPoseOrientation = newTransform.orientation;
 
-                    if (pose.emulatedPosition) {
-                        hud.textContent += `\nTracking lost on frame ${sendRotationNumber}`;
+                function onSessionEnded(event) {
+                    xrSession = null;
+                    xrButton.textContent = 'Enter VR';
+                }
+
+                function multiplyQuaternions(q1, q2) {
+                    return {
+                        x: q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y,
+                        y: q1.w * q2.y - q1.x * q2.z + q1.y * q2.w + q1.z * q2.x,
+                        z: q1.w * q2.z + q1.x * q2.y - q1.y * q2.x + q1.z * q2.w,
+                        w: q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
+                    };
+                }
+
+                function onXRFrame(time, frame) {
+                    try {
+                        let session = frame.session;
+
+                        for (let source of session.inputSources) {
+                            if (source.gamepad) {
+                                button4Pressed = buttonPressedThisFrame(source.gamepad, 4);
+                            }
+                        }
+                        let pose = frame.getViewerPose(xrRefSpace);
+                        if (pose) {
+                            //session.updateRenderState({ layers: [getLayer(pose.transform)] }); // works but slow and crashes
+                            let newTransform = new XRRigidTransform(
+                                undefined,
+                                multiplyQuaternions(pose.transform.orientation, transform180.orientation)
+                            );
+                            xrSession.renderState.layers[0].transform = newTransform;
+                            lastPoseOrientation = newTransform.orientation;
+
+                            if (pose.emulatedPosition) {
+                                hud.textContent += `\nTracking lost on frame ${sendRotationNumber}`;
+                            }
+                        }
+                        else {
+                            hud.textContent += `\nNo pose on frame ${sendRotationNumber}`;
+                        }
+
+                        if (sendRotationNumber == 100 && once) {
+                            hud.textContent += `\nSent ${sendRotationNumber} rotations`;
+                            once = false;
+                        }
+
+                        updateTexture();
+
+                        session.requestAnimationFrame(onXRFrame);
+                    } catch (e) {
+                        errors.textContent += 'XRFrame error: ' + e + '\n';
                     }
                 }
-                else {
-                    hud.textContent += `\nNo pose on frame ${sendRotationNumber}`;
+
+                // Hide fallback preview if XR is supported and session starts
+                function hideFallbackVideo() {
+                    document.getElementById('fallback-video').style.display = 'none';
                 }
-
-                if (sendRotationNumber == 100 && once) {
-                    hud.textContent += `\nSent ${sendRotationNumber} rotations`;
-                    once = false;
+                if (navigator.xr) {
+                    initXR();
+                    navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
+                        if (supported) {
+                            hideFallbackVideo();
+                        }
+                    });
                 }
-
-                updateTexture();
-
-                session.requestAnimationFrame(onXRFrame);
-            }
-
-            // Hide fallback preview if XR is supported and session starts
-            function hideFallbackVideo() {
-                document.getElementById('fallback-video').style.display = 'none';
-            }
-            if (navigator.xr) {
-                initXR();
-                navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
-                    if (supported) {
-                        hideFallbackVideo();
-                    }
-                });
-            }
 
 
         })();
