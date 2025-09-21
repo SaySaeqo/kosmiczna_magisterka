@@ -181,6 +181,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     // Texture uniform setup
                     let texLoc = gl.getUniformLocation(prog, 't');
                     gl.uniform1i(texLoc, 0); // texture unit 0
+                    
+                    gl.activeTexture(gl.TEXTURE0);
 
                 } catch (e) {
                     errors.textContent += 'WebGL error: ' + e + '\n';
@@ -197,16 +199,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 try {
                     let glayer = xrGLFactory.getSubImage(eqrtLayer, frame);
 
-                    gl.activeTexture(gl.TEXTURE0);
                     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.LINEAR);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.LINEAR);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
-                    gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
                     gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, imageElement);
                     gl.clear(gl.COLOR_BUFFER_BIT);
                     gl.drawArrays(gl.TRIANGLES, 0, 6);
-                    gl.bindTexture(gl.TEXTURE_2D, null);
                 } catch (e) {
                     errors.textContent += 'Texture update error: ' + e + '\n';
                 }
