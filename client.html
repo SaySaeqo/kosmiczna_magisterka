@@ -68,7 +68,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     <button id="enter">Enter VR</button>
     <button id="send-rotation">Send Rotation</button>
     <div id="hud">Loading…</div>
-    <div id="errors"></div>
+    <div id="errors">HERE</div>
     <main style='text-align: center;'>
         <!-- Fallback video preview for non-WebXR clients -->
         <div id="fallback-video" style="margin-top:40px;">
@@ -81,6 +81,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
     <script>
         (async function () {
             'use strict';
+
+            let errors = document.getElementById('errors');
+            window.onerror = (event) => {
+                errors.textContent += event.message + '\n';
+            };
+            errors.textContent += navigator.xr;
 
             let layersPolyfill = null;
             let transform180 = null;
@@ -131,12 +137,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     gamepad.buttons[index].pressed);
             }
 
-            let errors = document.getElementById('errors');
-            window.onerror = (event) => {
-                errors.textContent += event.message + '\n';
-            };
 
-            errors.textContent += navigator.xr;
             async function iceGatheringIsComplete(pc) {
                 await new Promise((resolve) => {
                     if (pc.iceGatheringState === 'complete') {
@@ -229,26 +230,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     session.requestAnimationFrame(onXRFrame);
                 });
 
-                sendRotationInterval = setInterval(() => {
-                    if (lastPoseOrientation) {
-                        rotationDataChannel.send(JSON.stringify({ orientation: lastPoseOrientation.toJSON(), number: sendRotationNumber++, time: performance.now() }));
-                        //fetch('/rotate', {
-                        //    method: 'POST',
-                        //    body: JSON.stringify({ orientation: lastPoseOrientation.toJSON(), number: sendRotationNumber++ }),
-                        //    headers: {
-                        //        'Content-Type': 'application/json'
-                        //    }
-                        //});
-                    }
-                }, 100);
-
-                sendPrintQueueSizeInterval = setInterval(() => {
-                    if (button4Pressed) {
-                        fetch('/print_queue_size', {
-                            method: 'POST',
-                        });
-                    }
-                }, 100);
                 session.addEventListener('visibilitychange', () => {
                     if (xrSession.visibilityState !== "visible") {
                         hud.textContent += `\n${xrSession.visibilityState}: ${sendRotationNumber}`;
@@ -260,10 +241,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             function onSessionEnded(event) {
                 xrSession = null;
                 xrButton.textContent = 'Enter VR';
-                clearInterval(sendRotationInterval);
-                sendRotationInterval = null;
-                clearInterval(sendPrintQueueSizeInterval);
-                sendPrintQueueSizeInterval = null;
             }
 
             function multiplyQuaternions(q1, q2) {
@@ -321,9 +298,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     if (supported) {
                         hideFallbackVideo();
                     }
-                });
-                sendRotationButton.addEventListener('click', () => {
-                    rotationDataChannel.send(JSON.stringify({ orientation: {x: 0, y: 0, z: 0, w: 1}, number: sendRotationNumber++ }));
                 });
             }
 
