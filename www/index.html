@@ -128,6 +128,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let gl = null;
             let xrFrameBuffer = null;
             let imageElement = document.getElementById("mjpeg");
+            let prog = null;
             
             function initGL() {
                 let canvas = document.createElement('canvas');
@@ -158,10 +159,25 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     gl.compileShader(fs);
 
                     // Minimal program setup
-                    let prog = gl.createProgram();
+                    prog = gl.createProgram();
                     gl.attachShader(prog, vs);
                     gl.attachShader(prog, fs);
                     gl.linkProgram(prog);
+                    
+                } catch (e) {
+                    errors.textContent += 'WebGL error: ' + e + '\n';
+                }
+
+                function onResize() {
+                    gl.canvas.width = gl.canvas.clientWidth * window.devicePixelRatio;
+                    gl.canvas.height = gl.canvas.clientHeight * window.devicePixelRatio;
+                }
+                window.addEventListener('resize', onResize);
+            }
+
+            function updateTexture(frame) {
+                try {
+                    let glayer = xrGLFactory.getSubImage(eqrtLayer, frame);
                     gl.useProgram(prog);
 
                     // Fullscreen quad vertex buffer
@@ -184,23 +200,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     
                     gl.activeTexture(gl.TEXTURE0);
 
-                } catch (e) {
-                    errors.textContent += 'WebGL error: ' + e + '\n';
-                }
-
-                function onResize() {
-                    gl.canvas.width = gl.canvas.clientWidth * window.devicePixelRatio;
-                    gl.canvas.height = gl.canvas.clientHeight * window.devicePixelRatio;
-                }
-                window.addEventListener('resize', onResize);
-            }
-
-            function updateTexture(frame) {
-                try {
-                    let glayer = xrGLFactory.getSubImage(eqrtLayer, frame);
-
                     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
-                    gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, gl.RGBA, gl.UNSIGNED_BYTE, imageElement);
+                    gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, imageElement);
                     gl.clear(gl.COLOR_BUFFER_BIT);
                     gl.drawArrays(gl.TRIANGLES, 0, 6);
                 } catch (e) {
