@@ -112,21 +112,33 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let button4Pressed = false;
             let rotationDataChannel = null;
             let eqrtLayer = null;
+            let projLayer = null;
 
             let sendRotationButton = document.getElementById('send-rotation');
 
             // Use the video element for both XR and fallback preview
-            let canvas = document.createElement('canvas');
             let gl = null;
             let xrFrameBuffer = null;
             let imageElement = document.getElementById("mjpeg");
-            try {
-                gl = canvas.getContext('webgl2', { xrCompatible: true });
-                gl.clearColor(0.0, 0, 0, 0.0);
-                xrFrameBuffer = gl.createFramebuffer();
-            } catch (e) {
-                errors.textContent += 'WebGL error: ' + e + '\n';
+            
+            function initGL() {
+                let canvas = document.createElement('canvas');
+                try {
+                    gl = canvas.getContext('webgl2', { xrCompatible: true });
+                    document.body.appendChild(gl.canvas);
+                    gl.clearColor(0.0, 0, 0, 0.0);
+                    xrFrameBuffer = gl.createFramebuffer();
+                } catch (e) {
+                    errors.textContent += 'WebGL error: ' + e + '\n';
+                }
+
+                function onResize() {
+                    gl.canvas.width = gl.canvas.clientWidth * window.devicePixelRatio;
+                    gl.canvas.height = gl.canvas.clientHeight * window.devicePixelRatio;
+                }
+                window.addEventListener('resize', onResize);
             }
+
             function updateTexture(frame) {
                 try {
                     let glayer = xrGLFactory.getSubImage(eqrtLayer, frame);
@@ -143,7 +155,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             }
             let hud = document.getElementById('hud');
             let once = true;
-            updateTexture();
 
             function buttonPressedThisFrame(gamepad, index) {
                 return (index < gamepad.buttons.length &&
@@ -220,6 +231,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                     session.addEventListener('end', onSessionEnded);
 
+                    initGL();
+
                     xrGLFactory = new XRWebGLBinding(session, gl);
                     if (xrGLFactory === null || xrGLFactory === undefined) {
                       errors.textContent += "Factory: " + xrGLFactory;
@@ -229,8 +242,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                     session.requestReferenceSpace('local').then((refSpace) => {
                         xrRefSpace = refSpace;
+                        projLayer = xrGLFactory.createProjectionLayer({ space: xrRefSpace, stencil: false });
+                        session.updateRenderState({ layers: [projLayer] });
                         eqrtLayer = getLayer(transform180);
-                        session.updateRenderState({ layers: [eqrtLayer] });
+                        session.updateRenderState({ layers: [projLayer, eqrtLayer] });
 
                         session.requestAnimationFrame(onXRFrame);
                     }).catch(e => {
@@ -292,6 +307,18 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                         if (pose.emulatedPosition) {
                             hud.textContent += `\nTracking lost on frame ${sendRotationNumber}`;
+                        }
+
+                        gl.bindFramebuffer(gl.FRAMEBUFFER, xrFrameBuffer);
+
+                        for (let view of pose.views) {
+                            let glayer = xrGLFactory.getViewSubImage(projLayer, view);
+                            glayer.framebuffer = xrFrameBuffer;
+                            let viewport = glayer.viewport;
+
+                            gl.bindFramebuffer(gl.FRAMEBUFFER, xrFrameBuffer);
+                            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.COLOR_ATTACHMENT0, gl.TEXTURE_2D, glayer.colorTexture, 0);
+                            gl.framebufferTexture2D(gl.FRAMEBUFFER, gl.DEPTH_ATTACHMENT, gl.TEXTURE_2D, glayer.depthStencilTexture, 0);
                         }
                     }
                     else {
