@@ -153,6 +153,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     // TEXTURE_CUBE_MAP expects the Y to be flipped for the faces and it already
                     // is flipped in our texture image.
                     //gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
+                    glayer.colorTexture.x = 1.0 - glayer.colorTexture.x;
                     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
                     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, imageElement);
                     gl.bindTexture(gl.TEXTURE_2D, null);
@@ -197,7 +198,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 }
             }
 
-            function getLayer(transform) {
+            function getLayer() {
                 let angle = 130 * 2 * Math.PI / 360; // 130 degrees in radians
                 let layout = "stereo-left-right";
                 try {
@@ -207,7 +208,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                         layout: layout,
                         lowerVerticalAngle: -1.1,
                         upperVerticalAngle: 1.1,
-                        //transform: transform,
                         viewPixelWidth: imageElement.width / 2,
                         viewPixelHeight: imageElement.height
                     });
@@ -216,19 +216,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     return null;
                 }
             }
-
-            function quatToEuler(quat) {
-                const q0 = quat.w;
-                const q1 = quat.x;
-                const q2 = quat.y;
-                const q3 = quat.z;
-                const Rx = Math.atan2(2 * (q0 * q1 + q2 * q3), 1 - (2 * (q1 * q1 + q2 * q2)));
-                const Ry = Math.asin(2 * (q0 * q2 - q3 * q1));
-                const Rz = Math.atan2(2 * (q0 * q3 + q1 * q2), 1 - (2 * (q2 * q2 + q3 * q3)));
-                const euler = [Rx, Ry, Rz];
-                return euler;
-
-            };
 
             function onSessionStarted(session) {
                 try {
@@ -248,7 +235,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                     session.requestReferenceSpace('local').then((refSpace) => {
                         xrRefSpace = refSpace;
-                        eqrtLayer = getLayer(transform180);
+                        eqrtLayer = getLayer();
                         session.updateRenderState({ layers: [eqrtLayer] });
 
                         session.requestAnimationFrame(onXRFrame);
@@ -274,15 +261,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 xrButton.textContent = 'Enter VR';
             }
 
-            function multiplyQuaternions(q1, q2) {
-                return {
-                    x: q1.w * q2.x + q1.x * q2.w + q1.y * q2.z - q1.z * q2.y,
-                    y: q1.w * q2.y - q1.x * q2.z + q1.y * q2.w + q1.z * q2.x,
-                    z: q1.w * q2.z + q1.x * q2.y - q1.y * q2.x + q1.z * q2.w,
-                    w: q1.w * q2.w - q1.x * q2.x - q1.y * q2.y - q1.z * q2.z
-                };
-            }
-
             function onXRFrame(time, frame) {
                 try {
                     let session = frame.session;
@@ -290,10 +268,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     for (let source of session.inputSources) {
                         if (source.gamepad) {
                             button4Pressed = buttonPressedThisFrame(source.gamepad, 4);
-                            if (button4Pressed) {
-                              xrSession.end();
-                              return;
-                            }
                         }
                     }
 
@@ -301,13 +275,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                     let pose = frame.getViewerPose(xrRefSpace);
                     if (pose) {
-                        //session.updateRenderState({ layers: [getLayer(pose.transform)] }); // works but slow and crashes
-                        let newTransform = new XRRigidTransform(
-                            undefined,
-                            multiplyQuaternions(pose.transform.orientation, transform180.orientation)
-                        );
-                        //xrSession.renderState.layers[0].transform = newTransform;
-                        lastPoseOrientation = newTransform.orientation;
+                        xrSession.renderState.layers[0].transform = pose.transform;
+                        lastPoseOrientation = pose.transform.orientation;
 
                         if (pose.emulatedPosition) {
                             hud.textContent += `\nTracking lost on frame ${sendRotationNumber}`;
