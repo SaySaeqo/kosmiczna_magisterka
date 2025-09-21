@@ -149,23 +149,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 }
 
 
-                async function iceGatheringIsComplete(pc) {
-                    await new Promise((resolve) => {
-                        if (pc.iceGatheringState === 'complete') {
-                            resolve();
-                        } else {
-                            const checkState = () => {
-                                if (pc.iceGatheringState === 'complete') {
-                                    pc.removeEventListener('icegatheringstatechange', checkState);
-                                    resolve();
-                                }
-                            };
-                            pc.addEventListener('icegatheringstatechange', checkState);
-                        }
-                    });
-                }
-
-
                 function initXR() {
                     if (navigator.xr) {
                         navigator.xr.isSessionSupported('immersive-vr').then((supported) => {
@@ -326,7 +309,6 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                         }
                     });
                 }
-
 
         })();
     </script>
