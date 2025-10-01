@@ -1,6 +1,7 @@
 from fastapi import FastAPI, Request
 import uvicorn
 import kosmiczna_magisterka.fast_motor as cmotor
+import logging
 
 app = FastAPI()
 
@@ -9,8 +10,9 @@ last_number = -1
 @app.post('/rotate')
 async def rotate(request: Request):
     data = await request.json()
-    x,y,z,w = data["orientation"]
-    number = data["number"]
+    o = data["orientation"]
+    x,y,z,w = float(o["x"]),float(o["y"]),float(o["z"]),float(o["w"])
+    number = int(data["number"])
 
     global last_number
     if number < last_number:
@@ -20,6 +22,7 @@ async def rotate(request: Request):
     cmotor.rotation_client(x, y, z, w)
 
 if __name__ == "__main__":
+    logging.basicConfig(level=logging.WARNING)
     cmotor.setup()
     cmotor.rotation_server()
-    uvicorn.run(app, host="0.0.0.0", port=8888)
+    uvicorn.run(app, host="127.0.0.1", port=9090, log_level="warning")

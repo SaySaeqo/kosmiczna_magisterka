@@ -215,7 +215,7 @@ static long g_angle = 0;
 #define INTERVAL 0.1
 #define REACH_TIME (INTERVAL*2)
 #define MAX_FREQUENCY 16000
-#define MAX_ACCELERATION 73000
+#define MAX_ACCELERATION 24000
 #define MIN_FREQUENCY 270
 
 static void* rotation_server_thread(void* arg)
@@ -243,7 +243,7 @@ static void* rotation_server_thread(void* arg)
             pthread_cond_wait(&cond, &lock);
             gpioWrite(ENABLE_PIN, 0);
         } else if (g_frequency != 0.0) {
-            int dir = g_frequency < 0.0 ? 1 : 0;
+            int dir = g_frequency < 0.0 ? 0 : 1;
             write_dir(dir);
             long sleep_time = labs((long)(500000000/g_frequency));
 
@@ -254,7 +254,7 @@ static void* rotation_server_thread(void* arg)
             gpioWrite(STEP_PIN, 0);
             pthread_mutex_lock(&lock);
 
-            g_angle += dir ? 1 : -1;
+            g_angle += dir ? -1 : 1;
         } else {
             pthread_mutex_unlock(&lock);
             long sleep_time = 1000000000/MIN_FREQUENCY;
