@@ -216,7 +216,7 @@ static long g_angle = 0;
 #define REACH_TIME (INTERVAL*2)
 #define MAX_FREQUENCY 16000
 #define MAX_ACCELERATION 73000
-#define MIN_FREQUENCY 300
+#define MIN_FREQUENCY 270
 
 static void* rotation_server_thread(void* arg)
 {
@@ -328,7 +328,7 @@ static PyObject* rotation_client(PyObject* self, PyObject* args)
 
     // Calculate the angle difference
     double angle = get_angle(g_position, target_position);
-    long angle_steps = (long)floor(angle / ROTATION_PER_STEP * INERTIA_PLATFORM2WHEEL_RATIO);
+    long angle_steps = -(long)floor(angle / ROTATION_PER_STEP * INERTIA_PLATFORM2WHEEL_RATIO);
 
     if (labs(angle_steps) > floor(16 * INERTIA_PLATFORM2WHEEL_RATIO)) {
         g_position = target_position;
@@ -339,8 +339,7 @@ static PyObject* rotation_client(PyObject* self, PyObject* args)
 
     if (g_angle != 0) {
         // Update acceleration to reach the target angle in the given time
-        g_acceleration = (2*g_angle-g_frequency*REACH_TIME)/(REACH_TIME*REACH_TIME);
-        g_acceleration *= INERTIA_PLATFORM2WHEEL_RATIO; // adjust for platform angle
+        g_acceleration = 2*(g_angle-g_frequency*REACH_TIME)/(REACH_TIME*REACH_TIME);
         g_acceleration = fmax(fmin(g_acceleration, MAX_ACCELERATION), -MAX_ACCELERATION);
 
         if (g_angle == angle_steps) {
