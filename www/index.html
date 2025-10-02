@@ -187,9 +187,11 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 }, 50); // Every 50 milliseconds
 
                 // Rotate the fallback image
-                let imageElement = document.getElementById('mjpeg');
+                let imageElement = document.getElementById('mjpeg');\
+                let originalSrc = imageElement.src;
                 function updateRotatedImage() {
                     if (imageRotated) {
+                        imageElement.src = originalSrc + '?t=' + new Date().getTime(); // Prevent caching
                         let ctx = imageRotated.getContext('2d');
                         imageRotated.width = imageElement.width;
                         imageRotated.height = imageElement.height;
@@ -201,9 +203,9 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                         ctx.drawImage(imageElement, 0, 0, imageRotated.width, imageRotated.height);
                         ctx.restore();
                     }
-                    requestAnimationFrame(updateRotatedImage);
                 }
-                updateRotatedImage();
+                
+                setInterval(updateRotatedImage, 50); // Update every 50 ms
 
             }
 
