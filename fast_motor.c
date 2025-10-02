@@ -33,8 +33,7 @@
 #define DIR_PIN 23
 #define ENABLE_PIN 4
 #define ROTATION_PER_STEP (M_PI/800)
-// #define INERTIA_PLATFORM2WHEEL_RATIO 2.74
-#define INERTIA_PLATFORM2WHEEL_RATIO 2.62
+#define INERTIA_PLATFORM2WHEEL_RATIO 2.74
 #define CALCULATION_TIME_NS 260
 #define WRITING_TIME_NS 1100
 #define INIT_TIME_NS 6000 // 3000-80000 ns
@@ -277,8 +276,10 @@ static void* rotation_server_thread(void* arg)
         if (g_angle == 0) {
             g_frequency = 0.0;
             if (g_acceleration != 0.0) {
-                write_dir(g_acceleration < 0.0 ? 0 : 1);
+                pthread_mutex_unlock(&lock);
+                write_dir(g_acceleration < 0.0 ? 1 : 0);
                 generate_signal_internal(MIN_FREQUENCY, INTERVAL);
+                pthread_mutex_lock(&lock);
             }
             gpioWrite(ENABLE_PIN, 1);
             pthread_cond_wait(&cond, &lock);
