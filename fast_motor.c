@@ -226,6 +226,21 @@ static double get_angle(struct Quaternion q1, struct Quaternion q2)
     return atan2(2*(dp.w*dp.y + dp.x*dp.z), 1 - 2*(dp.y*dp.y + dp.z*dp.z));
 }
 
+static void generate_signal_internal(double freq, double duration) {
+    double impulse_duration = fabs(1.0 / freq);
+    int sleep_time = (int)(impulse_duration * 500000000) - WRITING_TIME_NS;
+    int impulses_count = (int)floor(duration / impulse_duration);
+    SLEEP_PREP
+
+    for (int i = 0; i < impulses_count; i++)
+    {
+        gpioWrite(STEP_PIN, 1);
+        SLEEP(sleep_time)
+        gpioWrite(STEP_PIN, 0);
+        SLEEP(sleep_time)
+    }
+}
+
 static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 static bool g_server_is_running = false;
@@ -236,9 +251,9 @@ static double g_acceleration = 0.0;
 static long g_angle = 0;
 #define INTERVAL 0.1
 #define REACH_TIME (INTERVAL*2)
-#define MAX_FREQUENCY 16000
-#define MAX_ACCELERATION 24000
-#define MIN_FREQUENCY 270
+#define MAX_FREQUENCY 8000
+#define MAX_ACCELERATION 12000
+#define MIN_FREQUENCY 110
 
 static void* rotation_server_thread(void* arg)
 {
@@ -261,6 +276,10 @@ static void* rotation_server_thread(void* arg)
         // Generate step signal or wait
         if (g_angle == 0) {
             g_frequency = 0.0;
+            if (g_acceleration != 0.0) {
+                write_dir(g_acceleration < 0.0 ? 0 : 1);
+                generate_signal_internal(MIN_FREQUENCY, INTERVAL);
+            }
             gpioWrite(ENABLE_PIN, 1);
             pthread_cond_wait(&cond, &lock);
             gpioWrite(ENABLE_PIN, 0);
