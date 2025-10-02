@@ -78,7 +78,6 @@ static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
     SLEEP_PREP
     float time_passed = 0.0;
     float impulse_duration = 1.0 / freq;
-    float acc_const = acceleration / ROTATION_PER_STEP;
 
     int wait_times[20000];
     int wait_times_length = 0;
@@ -87,9 +86,23 @@ static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
     {
         int sleep_time = (int)(impulse_duration * 500000000);
         time_passed += impulse_duration;
-        impulse_duration = 1.0 / (freq + acc_const * time_passed);
+        impulse_duration = 1.0 / (freq + acceleration * time_passed);
 
         wait_times[wait_times_length++] = sleep_time;
+    }
+
+    int wait_times_reversed[20000];
+    int wait_times_reversed_length = 0;
+    time_passed = 0.0;
+    freq = 1/impulse_duration;
+
+    while (time_passed < duration)
+    {
+        int sleep_time = (int)(impulse_duration * 500000000);
+        time_passed += impulse_duration;
+        impulse_duration = 1.0 / (freq - acceleration * time_passed);
+
+        wait_times_reversed[wait_times_reversed_length++] = sleep_time;
     }
     
     for (int i = 0; i < wait_times_length; i++)
@@ -98,6 +111,14 @@ static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
         SLEEP(wait_times[i])
         gpioWrite(STEP_PIN, 0);
         SLEEP(wait_times[i])
+    }
+
+    for (int i = 0; i < wait_times_reversed_length; i++)
+    {
+        gpioWrite(STEP_PIN, 1);
+        SLEEP(wait_times_reversed[i])
+        gpioWrite(STEP_PIN, 0);
+        SLEEP(wait_times_reversed[i])
     }
 
     Py_END_ALLOW_THREADS
@@ -248,13 +269,13 @@ static void* rotation_server_thread(void* arg)
             long sleep_time = labs((long)(500000000/g_frequency));
 
             pthread_mutex_unlock(&lock);
-            SLEEP(sleep_time)
+            SLEEP(sleep_time - WRITING_TIME_NS)
             gpioWrite(STEP_PIN, 1);
-            SLEEP(sleep_time)
+            SLEEP(sleep_time - WRITING_TIME_NS)
             gpioWrite(STEP_PIN, 0);
             pthread_mutex_lock(&lock);
 
-            g_angle += dir ? -1 : 1;
+            g_angle += g_frequency < 0.0 ? 1 : -1;
         } else {
             pthread_mutex_unlock(&lock);
             long sleep_time = 1000000000/MIN_FREQUENCY;
