@@ -10,9 +10,10 @@ import kosmiczna_magisterka.fast_motor as cmotor
 
 def rotate_platform(angle):
     GPIO.output(motor.MPINS, GPIO.HIGH)
-    acceleration = (angle / motor.ROTATION_PER_STEP * 16) * motor.INERTIA_PLATFORM2WHEEL_RATIO * 4
+    duration = 0.5
+    acceleration = (angle / motor.ROTATION_PER_STEP / motor.get_step_resolution()) * motor.INERTIA_PLATFORM2WHEEL_RATIO / duration / duration
     print(acceleration)
-    cmotor.generate_signal_prep(acceleration,300,0.5)
+    cmotor.generate_signal_prep(acceleration,300,duration)
 
 def calibrate_inertia_ratio():
     unit, tenths, hundredths = 11, 0.9, 0.09
