@@ -32,7 +32,7 @@
 #define M3_PIN 22
 #define DIR_PIN 23
 #define ENABLE_PIN 4
-#define ROTATION_PER_STEP (M_PI/1600)
+#define ROTATION_PER_STEP (M_PI/800)
 // #define INERTIA_PLATFORM2WHEEL_RATIO 2.74
 #define INERTIA_PLATFORM2WHEEL_RATIO 2.62
 #define CALCULATION_TIME_NS 260
@@ -423,7 +423,7 @@ fast_motor_module_exec(PyObject *m)
     ASSERT_SUCCESS(gpioWrite(DIR_PIN, 0), "Failed to write to GPIO");
     ASSERT_SUCCESS(gpioWrite(M1_PIN, 1), "Failed to write to GPIO");
     ASSERT_SUCCESS(gpioWrite(M2_PIN, 1), "Failed to write to GPIO");
-    ASSERT_SUCCESS(gpioWrite(M3_PIN, 1), "Failed to write to GPIO");
+    ASSERT_SUCCESS(gpioWrite(M3_PIN, 0), "Failed to write to GPIO");
     clock_gettime(CLOCK_MONOTONIC, &signal_min_start);
     return 0;
 }

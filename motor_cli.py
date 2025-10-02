@@ -18,6 +18,7 @@ if __name__ == "__main__":
         motor.setup()
         motor.reset()
         GPIO.output(motor.MPINS, GPIO.HIGH)  # Set 1/16 step
+        GPIO.output(motor.PINS["M3"], GPIO.LOW)
         #motor.pigpio_init()
         next_cmd = None
         commands = []
