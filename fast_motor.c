@@ -249,7 +249,7 @@ static double g_frequency = 0.0;
 static double g_acceleration = 0.0;
 static long g_angle = 0;
 #define INTERVAL 0.1
-#define REACH_TIME (INTERVAL*2)
+#define REACH_TIME (INTERVAL*4)
 #define MAX_FREQUENCY 8000
 #define MAX_ACCELERATION 24000
 #define MIN_FREQUENCY 200
