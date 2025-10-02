@@ -188,18 +188,20 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                 // Rotate the fallback image
                 let imageElement = document.getElementById('mjpeg');
-                let originalSrc = imageElement.src;
                 function updateRotatedImage() {
-                    if (imageRotated) {
-                        imageElement.src = originalSrc + '?' + Date.now(); // Prevent caching
-                        let ctx = imageRotated.getContext('2d');
-                        imageRotated.width = imageElement.width;
-                        imageRotated.height = imageElement.height;
-                        ctx.save();
-                        // Rotate 180 degrees around center by scaling
-                        ctx.scale(-1, -1);
-                        ctx.drawImage(imageElement, -imageElement.width, -imageElement.height, imageElement.width, imageElement.height);
-                        ctx.restore();
+                    if (imageRotated && imageElement.complete) {
+                        createImageBitmap(imageElement).then((bitmap) => {
+                            let ctx = imageRotated.getContext('2d');
+                            imageRotated.width = bitmap.width;
+                            imageRotated.height = bitmap.height;
+                            ctx.save();
+                            // Rotate 180 degrees around center
+                            ctx.translate(imageRotated.width / 2, imageRotated.height / 2);
+                            ctx.rotate(Math.PI); // 180 degrees in radians
+                            ctx.translate(-imageRotated.width / 2, -imageRotated.height / 2);
+                            ctx.drawImage(bitmap, 0, 0, imageRotated.width, imageRotated.height);
+                            ctx.restore();
+                        });
                     }
                 }
                 
