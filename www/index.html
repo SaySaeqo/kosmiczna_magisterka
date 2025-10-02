@@ -144,32 +144,29 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 fetch('/api/rotate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ orientation: q.toJSON(), number: sendRotationNumber++ })
+                    body: JSON.stringify({ orientation: q, number: sendRotationNumber++ })
                 }).catch(e => {
                     errors.textContent += 'Fetch error: ' + e + '\n';
                 });
             }
 
             const ANGLE_STEP = Math.PI / 72; // 2.5 degrees in radians
-            const ROTATE_QUAT_RIGHT = Quaternion.fromAxisAngle({x:0,y:1,z:0}, ANGLE_STEP);
-            const ROTATE_QUAT_LEFT = Quaternion.fromAxisAngle({x:0,y:1,z:0}, -ANGLE_STEP);
-            
+            const ROTATE_QUAT_RIGHT = Quaternion.fromAxisAngle([0,1,0], -ANGLE_STEP);
+            const ROTATE_QUAT_LEFT = Quaternion.fromAxisAngle([0,1,0], ANGLE_STEP);
+
             sendRotationButton.addEventListener('click', () => {
                 notXRPosition = new Quaternion(1, 0, 0, 0);
-                console.log(notXRPosition.toJSON());
-                // sendQuaternion(notXRPosition);
+                sendQuaternion(notXRPosition);
             });
 
             sendLeftButton.addEventListener('click', () => {
                 notXRPosition = notXRPosition.mul(ROTATE_QUAT_LEFT);
-                console.log(notXRPosition.toJSON());
-                // sendQuaternion(notXRPosition);
+                sendQuaternion(notXRPosition);
             });
 
             sendRightButton.addEventListener('click', () => {
                 notXRPosition = notXRPosition.mul(ROTATE_QUAT_RIGHT);
-                console.log(notXRPosition.toJSON());
-            //    sendQuaternion(notXRPosition);
+               sendQuaternion(notXRPosition);
             });
 
             // Use the video element for both XR and fallback preview
