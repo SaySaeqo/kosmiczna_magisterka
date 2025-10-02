@@ -170,7 +170,7 @@ if __name__ == "__main__":
                     print("Usage: crotacc_p [radians] [seconds] [frequency]")
                     continue
 
-                acceleration = 2 * motor.INERTIA_PLATFORM2WHEEL_RATIO * radians / duration / duration / motor.ROTATION_PER_STEP
+                acceleration = (radians / motor.ROTATION_PER_STEP / motor.get_step_resolution()) * motor.INERTIA_PLATFORM2WHEEL_RATIO / duration / duration
                 commands.append(with_arg(functools.partial(cmotor.generate_signal_prep, acceleration, frequency, duration)))
             elif cmd[0] == "crotacc":
                 if rotator is not None:
