@@ -29,7 +29,7 @@ def calibrate_inertia_ratio():
     for t in range(1, 10):
         t = t / 10.0
         motor.INERTIA_PLATFORM2WHEEL_RATIO = unit + t
-        rotate_platform(math.pi)
+        rotate_platform(math.pi/2)
         next_step = input(f"Is {unit + t} to much? (y/n): ").strip().lower()
         if next_step == "y":
             tenths = t - 0.1
@@ -38,7 +38,7 @@ def calibrate_inertia_ratio():
     for h in range(1, 10):
         h = h / 100.0
         motor.INERTIA_PLATFORM2WHEEL_RATIO = unit + tenths + h
-        rotate_platform(math.pi)
+        rotate_platform(math.pi/2)
         next_step = input(f"Is {unit + tenths + h} to much? (y/n): ").strip().lower()
         if next_step == "y":
             hundredths = h - 0.01
