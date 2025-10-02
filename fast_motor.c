@@ -77,7 +77,7 @@ static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
 
     SLEEP_PREP
     float time_passed = 0.0;
-    float impulse_duration = 1.0 / freq;
+    float impulse_duration = fabs(1.0 / freq);
 
     int wait_times[20000];
     int wait_times_length = 0;
@@ -86,7 +86,8 @@ static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
     {
         int sleep_time = (int)(impulse_duration * 500000000);
         time_passed += impulse_duration;
-        impulse_duration = 1.0 / (freq + acceleration * time_passed);
+        freq = freq + acceleration * impulse_duration;
+        impulse_duration = fabs(1.0 / freq);
 
         wait_times[wait_times_length++] = sleep_time;
     }
@@ -94,13 +95,13 @@ static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
     int wait_times_reversed[20000];
     int wait_times_reversed_length = 0;
     time_passed = 0.0;
-    freq = 1/impulse_duration;
 
     while (time_passed < duration)
     {
         int sleep_time = (int)(impulse_duration * 500000000);
         time_passed += impulse_duration;
-        impulse_duration = 1.0 / (freq - acceleration * time_passed);
+        freq = freq - acceleration * impulse_duration;
+        impulse_duration = fabs(1.0 / freq);
 
         wait_times_reversed[wait_times_reversed_length++] = sleep_time;
     }
@@ -108,17 +109,17 @@ static PyObject* generate_signal_prep(PyObject* self, PyObject* args)
     for (int i = 0; i < wait_times_length; i++)
     {
         gpioWrite(STEP_PIN, 1);
-        SLEEP(wait_times[i])
+        SLEEP(wait_times[i] - WRITING_TIME_NS)
         gpioWrite(STEP_PIN, 0);
-        SLEEP(wait_times[i])
+        SLEEP(wait_times[i] - WRITING_TIME_NS)
     }
 
     for (int i = 0; i < wait_times_reversed_length; i++)
     {
         gpioWrite(STEP_PIN, 1);
-        SLEEP(wait_times_reversed[i])
+        SLEEP(wait_times_reversed[i] - WRITING_TIME_NS)
         gpioWrite(STEP_PIN, 0);
-        SLEEP(wait_times_reversed[i])
+        SLEEP(wait_times_reversed[i] - WRITING_TIME_NS)
     }
 
     Py_END_ALLOW_THREADS
