@@ -116,7 +116,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let lastPoseOrientation = null;
             let sendRotationNumber = 0;
             let sendRotationInterval = null;
-            let sendPrintQueueSizeInterval = null;
+            let sendPrintInterval = null;
             let button4Pressed = false;
             let rotationDataChannel = null;
             let eqrtLayer = null;
@@ -270,6 +270,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                             });
                         }
                     }, 50); 
+
+                    sendPrintInterval = setInterval(() => {
+                        if (button4Pressed) {
+                            fetch('/print_globals', { method: 'POST' }).catch(e => {
+                                errors.textContent += 'Print fetch error: ' + e + '\n';
+                            });
+                        }
+                    }, 100); // Every 100 milliseconds
+
                 } catch (e) {
                     errors.textContent += 'SessionStarted error: ' + e + '\n';
                     session.end();
@@ -282,6 +291,10 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 if (sendRotationInterval) {
                     clearInterval(sendRotationInterval);
                     sendRotationInterval = null;
+                }
+                if (sendPrintInterval) {
+                    clearInterval(sendPrintInterval);
+                    sendPrintInterval = null;
                 }
             }
 

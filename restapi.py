@@ -21,6 +21,10 @@ async def rotate(request: Request):
 
     cmotor.rotation_client(x, y, z, w)
 
+@app.post('/print_globals')
+async def print_globals():
+    cmotor.print_globals()
+
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING)
     cmotor.setup()
