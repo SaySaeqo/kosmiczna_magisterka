@@ -141,7 +141,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             
             let notXRPosition = new Quaternion(1, 0, 0, 0);
             function sendQuaternion(q) {
-                fetch('/rotate', {
+                fetch('/api/rotate', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ orientation: q.toJSON(), number: sendRotationNumber++ })
@@ -309,7 +309,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                     sendRotationInterval = setInterval(() => {
                         if (lastPoseOrientation) {
-                            fetch('/rotate', {
+                            fetch('/api/rotate', {
                                 method: 'POST',
                                 headers: { 'Content-Type': 'application/json' },
                                 body: JSON.stringify({ orientation: lastPoseOrientation.toJSON(), number: sendRotationNumber++ })
@@ -321,7 +321,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                     sendPrintInterval = setInterval(() => {
                         if (button4Pressed) {
-                            fetch('/print_globals', { method: 'POST' }).catch(e => {
+                            fetch('/api/print_globals', { method: 'POST' }).catch(e => {
                                 errors.textContent += 'Print fetch error: ' + e + '\n';
                             });
                         }
