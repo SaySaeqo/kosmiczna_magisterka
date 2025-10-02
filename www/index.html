@@ -69,12 +69,19 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
       height: auto;
       margin: auto;
     }
+
+    .buttons {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-top: 10px;
+    }
 </style>
 </head>
 
 <body>
     <button id="enter">Enter VR</button>
-    <button id="send-rotation">Send Rotation</button>
+    <button id="send-rotation">Position 0</button>
     <div id="hud">Loading…</div>
     <div id="errors"> </div>
     <main style='text-align: center;'>
@@ -83,9 +90,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             <h2 style="color:white;">Live Video Preview</h2>
             <img id="mjpeg" src="feed.mjpg" />
             <p style="color:gray;">If you see nothing, better start praying.</p>
+            <div class="buttons">
+                <button id="send-left">⬅️⬅️⬅️⬅️</button>
+                <button id="send-right">➡️➡️➡️➡️</button>
+            </div>
         </div>
     </main>
     <script src="webxr-layers-polyfill.js"></script>
+    <script src="quaternion.min.js"></script>
     <script>
         (async function () {
             'use strict';
@@ -123,6 +135,42 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let projLayer = null;
 
             let sendRotationButton = document.getElementById('send-rotation');
+            let sendLeftButton = document.getElementById('send-left');
+            let sendRightButton = document.getElementById('send-right');
+
+            
+            let notXRPosition = new Quaternion(1, 0, 0, 0);
+            function sendQuaternion(q) {
+                fetch('/rotate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ orientation: q.toJSON(), number: sendRotationNumber++ })
+                }).catch(e => {
+                    errors.textContent += 'Fetch error: ' + e + '\n';
+                });
+            }
+
+            const ANGLE_STEP = Math.PI / 72; // 2.5 degrees in radians
+            const ROTATE_QUAT_RIGHT = Quaternion.fromAxisAngle({x:0,y:1,z:0}, ANGLE_STEP);
+            const ROTATE_QUAT_LEFT = Quaternion.fromAxisAngle({x:0,y:1,z:0}, -ANGLE_STEP);
+            
+            sendRotationButton.addEventListener('click', () => {
+                notXRPosition = new Quaternion(1, 0, 0, 0);
+                console.log(notXRPosition.toJSON());
+                // sendQuaternion(notXRPosition);
+            });
+
+            sendLeftButton.addEventListener('click', () => {
+                notXRPosition = notXRPosition.mul(ROTATE_QUAT_LEFT);
+                console.log(notXRPosition.toJSON());
+                // sendQuaternion(notXRPosition);
+            });
+
+            sendRightButton.addEventListener('click', () => {
+                notXRPosition = notXRPosition.mul(ROTATE_QUAT_RIGHT);
+                console.log(notXRPosition.toJSON());
+            //    sendQuaternion(notXRPosition);
+            });
 
             // Use the video element for both XR and fallback preview
             let gl = null;
