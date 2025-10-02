@@ -248,7 +248,7 @@ static struct Quaternion g_position = {NO_VALUE, NO_VALUE, NO_VALUE, 1};
 static double g_frequency = 0.0;
 static double g_acceleration = 0.0;
 static long g_angle = 0;
-#define INTERVAL 0.1
+#define INTERVAL 0.05
 #define REACH_TIME (INTERVAL*4)
 #define MAX_FREQUENCY 8000
 #define MAX_ACCELERATION 24000
@@ -275,10 +275,10 @@ static void* rotation_server_thread(void* arg)
         // Generate step signal or wait
         if (g_angle == 0) {
             g_frequency = 0.0;
-            if (g_acceleration != 0.0) {
-                write_dir(g_acceleration < 0.0 ? 1 : 0);
-                generate_signal_internal(MIN_FREQUENCY, INTERVAL);
-            }
+            //if (g_acceleration != 0.0) {
+            //    write_dir(g_acceleration < 0.0 ? 1 : 0);
+            //    generate_signal_internal(MIN_FREQUENCY, INTERVAL);
+            //}
             gpioWrite(ENABLE_PIN, 1);
             pthread_cond_wait(&cond, &lock);
             gpioWrite(ENABLE_PIN, 0);
