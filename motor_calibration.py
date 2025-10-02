@@ -48,11 +48,11 @@ def calibrate_inertia_ratio():
 
     motor.INERTIA_PLATFORM2WHEEL_RATIO = unit + tenths + hundredths
     time.sleep(1)
+    rotate_platform(math.pi/4)
+    time.sleep(1)
     rotate_platform(math.pi/2)
     time.sleep(1)
     rotate_platform(math.pi)
-    time.sleep(1)
-    rotate_platform(2*math.pi)
 
 
 

@@ -251,8 +251,8 @@ static long g_angle = 0;
 #define INTERVAL 0.1
 #define REACH_TIME (INTERVAL*2)
 #define MAX_FREQUENCY 8000
-#define MAX_ACCELERATION 12000
-#define MIN_FREQUENCY 110
+#define MAX_ACCELERATION 24000
+#define MIN_FREQUENCY 200
 
 static void* rotation_server_thread(void* arg)
 {
