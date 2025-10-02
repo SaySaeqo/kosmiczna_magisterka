@@ -46,6 +46,16 @@ def calibrate_inertia_ratio():
     
     print(f"Final inertia ratio: {unit + tenths + hundredths}")
 
+    motor.INERTIA_PLATFORM2WHEEL_RATIO = unit + tenths + hundredths
+    time.sleep(1)
+    rotate_platform(math.pi/2)
+    time.sleep(1)
+    rotate_platform(math.pi)
+    time.sleep(1)
+    rotate_platform(2*math.pi)
+
+
+
 def calibrate_decay_time():
     active = True
     start = None
