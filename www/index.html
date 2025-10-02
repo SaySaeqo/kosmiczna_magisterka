@@ -92,6 +92,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             <p style="color:gray;">If you see nothing, better start praying.</p>
             <div class="buttons">
                 <button id="send-left">⬅️⬅️⬅️⬅️</button>
+                <button id="print-globals">Print Globals</button>
                 <button id="send-right">➡️➡️➡️➡️</button>
             </div>
         </div>
@@ -137,8 +138,13 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let sendRotationButton = document.getElementById('send-rotation');
             let sendLeftButton = document.getElementById('send-left');
             let sendRightButton = document.getElementById('send-right');
+            let printGlobalsButton = document.getElementById('print-globals');
+            let rightPressed = false;
+            let leftPressed = false;
+            let resetPressed = false;
+            let printGlobalsPressed = false;
 
-            
+
             let notXRPosition = new Quaternion(1, 0, 0, 0);
             function sendQuaternion(q) {
                 fetch('/api/rotate', {
@@ -154,19 +160,51 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             const ROTATE_QUAT_RIGHT = Quaternion.fromAxisAngle([0,1,0], -ANGLE_STEP);
             const ROTATE_QUAT_LEFT = Quaternion.fromAxisAngle([0,1,0], ANGLE_STEP);
 
-            sendRotationButton.addEventListener('click', () => {
-                notXRPosition = new Quaternion(1, 0, 0, 0);
-                sendQuaternion(notXRPosition);
+            if (!navigator.xr) {
+                setInterval(() => {
+                    if (rightPressed) {
+                        notXRPosition = notXRPosition.mul(ROTATE_QUAT_RIGHT);
+                        sendQuaternion(notXRPosition);
+                    }
+                    else if (leftPressed) {
+                        notXRPosition = notXRPosition.mul(ROTATE_QUAT_LEFT);
+                        sendQuaternion(notXRPosition);
+                    }
+                    else if (resetPressed) {
+                        notXRPosition = new Quaternion(1, 0, 0, 0);
+                        sendQuaternion(notXRPosition);
+                    } else if (printGlobalsPressed) {
+                        fetch('/api/print_globals', { method: 'POST' }).catch(e => {
+                            errors.textContent += 'Print fetch error: ' + e + '\n';
+                        });
+                    }
+                }, 50); // Every 50 milliseconds
+            }
+
+            sendRotationButton.addEventListener('onmousedown', (e) => {
+                resetPressed = true;
+            });
+            sendRotationButton.addEventListener('onmouseup', (e) => {
+                resetPressed = false;
             });
 
-            sendLeftButton.addEventListener('click', () => {
-                notXRPosition = notXRPosition.mul(ROTATE_QUAT_LEFT);
-                sendQuaternion(notXRPosition);
+            sendLeftButton.addEventListener('mousedown', (e) => {
+                leftPressed = true;
             });
-
-            sendRightButton.addEventListener('click', () => {
-                notXRPosition = notXRPosition.mul(ROTATE_QUAT_RIGHT);
-               sendQuaternion(notXRPosition);
+            sendLeftButton.addEventListener('mouseup', (e) => {
+                leftPressed = false;
+            });
+            sendRightButton.addEventListener('mousedown', (e) => {
+                rightPressed = true;
+            });
+            sendRightButton.addEventListener('mouseup', (e) => {
+                rightPressed = false;
+            });
+            printGlobalsButton.addEventListener('mousedown', (e) => {
+                printGlobalsPressed = true;
+            });
+            printGlobalsButton.addEventListener('mouseup', (e) => {
+                printGlobalsPressed = false;
             });
 
             // Use the video element for both XR and fallback preview
