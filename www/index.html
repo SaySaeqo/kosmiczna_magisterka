@@ -191,7 +191,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 let originalSrc = imageElement.src;
                 function updateRotatedImage() {
                     if (imageRotated) {
-                        imageElement.src = originalSrc + '?t=' + new Date().getTime(); // Prevent caching
+                        imageElement.src = originalSrc + '?' + Date.now(); // Prevent caching
                         let ctx = imageRotated.getContext('2d');
                         imageRotated.width = imageElement.width;
                         imageRotated.height = imageElement.height;
