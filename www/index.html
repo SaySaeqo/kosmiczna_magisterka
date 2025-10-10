@@ -331,15 +331,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             }
 
             function getLayer() {
-                let angle = 200 * 2 * Math.PI / 360; // 130 degrees in radians
+                let angle = 100 * 2 * Math.PI / 360; // 130 degrees in radians
                 let layout = "stereo-left-right";
                 try {
                     return xrGLFactory.createEquirectLayer({
                         space: xrRefSpace,
                         centralHorizontalAngle: angle,
                         layout: layout,
-                        lowerVerticalAngle: -1.4,
-                        upperVerticalAngle: 1.4,
+                        lowerVerticalAngle: -0.75,
+                        upperVerticalAngle: 0.75,
                         viewPixelWidth: imageElement.width / 2,
                         viewPixelHeight: imageElement.height
                     });
@@ -436,34 +436,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                     let pose = frame.getViewerPose(xrRefSpace);
                     if (pose) {
-                     // Extract only the horizontal (yaw) rotation from the head pose
-                        let originalQuat = pose.transform.orientation;
-
-                        // Convert quaternion to Euler angles to extract yaw
-                        let w = originalQuat.w;
-                        let x = originalQuat.x;
-                        let y = originalQuat.y;
-                        let z = originalQuat.z;
-
-                        // Calculate yaw angle (rotation around Y axis)
-                        let yaw = Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + z * z));
-
-                        // Create new quaternion with only yaw rotation (around Y axis)
-                        let horizontalOnlyQuat = {
-                            x: 0,
-                            y: Math.sin(yaw / 2),
-                            z: 0,
-                            w: Math.cos(yaw / 2)
-                        };
-
-                        // Create new transform with horizontal-only rotation and original position
-                        let horizontalTransform = new XRRigidTransform(
-                            pose.transform.position,
-                            horizontalOnlyQuat
-                        );
-
-                        xrSession.renderState.layers[0].transform = horizontalTransform;
-                        //xrSession.renderState.layers[0].transform = pose.transform;
+                        xrSession.renderState.layers[0].transform = pose.transform;
                         lastPoseOrientation = pose.transform.orientation;
 
                         if (pose.emulatedPosition) {
