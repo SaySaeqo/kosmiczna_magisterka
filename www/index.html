@@ -152,6 +152,7 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             let resetPressed = false;
             let printGlobalsPressed = false;
 
+            let pressStart = null;
 
             let notXRPosition = new Quaternion(1, 0, 0, 0);
             function sendQuaternion(q) {
@@ -164,7 +165,8 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                 });
             }
 
-            const ANGLE_STEP = Math.PI / 72; // 2.5 degrees in radians
+            const ANGLE_STEP = Math.PI / 144; // 2.5/2 degrees in radians
+            let curr_angle = 0;
             const ROTATE_QUAT_RIGHT = Quaternion.fromAxisAngle([0,1,0], -ANGLE_STEP);
             const ROTATE_QUAT_LEFT = Quaternion.fromAxisAngle([0,1,0], ANGLE_STEP);
             
@@ -174,11 +176,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             if (!navigator.xr) {
                 setInterval(() => {
                     if (rightPressed) {
-                        notXRPosition = notXRPosition.mul(ROTATE_QUAT_RIGHT);
+                        let times = Math.ceil((Date.now()-pressStart)/100);
+                        curr_angle -= ANGLE_STEP*times;
+                        notXRPosition = Quaternion.fromAxisAngle([0,1,0], curr_angle);
                         sendQuaternion(notXRPosition);
                     }
                     else if (leftPressed) {
-                        notXRPosition = notXRPosition.mul(ROTATE_QUAT_LEFT);
+                        let times = Math.ceil((Date.now()-pressStart)/100);
+                        curr_angle += ANGLE_STEP*times;
+                        notXRPosition = Quaternion.fromAxisAngle([0,1,0], curr_angle);
                         sendQuaternion(notXRPosition);
                     }
                     else if (resetPressed) {
@@ -223,12 +229,14 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
             sendLeftButton.addEventListener('mousedown', (e) => {
                 leftPressed = true;
+                pressStart = Date.now()
             });
             sendLeftButton.addEventListener('mouseup', (e) => {
                 leftPressed = false;
             });
             sendRightButton.addEventListener('mousedown', (e) => {
                 rightPressed = true;
+                pressStart = Date.now()
             });
             sendRightButton.addEventListener('mouseup', (e) => {
                 rightPressed = false;
@@ -323,15 +331,15 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
             }
 
             function getLayer() {
-                let angle = 130 * 2 * Math.PI / 360; // 130 degrees in radians
+                let angle = 200 * 2 * Math.PI / 360; // 130 degrees in radians
                 let layout = "stereo-left-right";
                 try {
                     return xrGLFactory.createEquirectLayer({
                         space: xrRefSpace,
                         centralHorizontalAngle: angle,
                         layout: layout,
-                        lowerVerticalAngle: -1.1,
-                        upperVerticalAngle: 1.1,
+                        lowerVerticalAngle: -1.4,
+                        upperVerticalAngle: 1.4,
                         viewPixelWidth: imageElement.width / 2,
                         viewPixelHeight: imageElement.height
                     });
@@ -428,7 +436,34 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
                     let pose = frame.getViewerPose(xrRefSpace);
                     if (pose) {
-                        xrSession.renderState.layers[0].transform = pose.transform;
+                     // Extract only the horizontal (yaw) rotation from the head pose
+                        let originalQuat = pose.transform.orientation;
+
+                        // Convert quaternion to Euler angles to extract yaw
+                        let w = originalQuat.w;
+                        let x = originalQuat.x;
+                        let y = originalQuat.y;
+                        let z = originalQuat.z;
+
+                        // Calculate yaw angle (rotation around Y axis)
+                        let yaw = Math.atan2(2 * (w * y + x * z), 1 - 2 * (y * y + z * z));
+
+                        // Create new quaternion with only yaw rotation (around Y axis)
+                        let horizontalOnlyQuat = {
+                            x: 0,
+                            y: Math.sin(yaw / 2),
+                            z: 0,
+                            w: Math.cos(yaw / 2)
+                        };
+
+                        // Create new transform with horizontal-only rotation and original position
+                        let horizontalTransform = new XRRigidTransform(
+                            pose.transform.position,
+                            horizontalOnlyQuat
+                        );
+
+                        xrSession.renderState.layers[0].transform = horizontalTransform;
+                        //xrSession.renderState.layers[0].transform = pose.transform;
                         lastPoseOrientation = pose.transform.orientation;
 
                         if (pose.emulatedPosition) {
