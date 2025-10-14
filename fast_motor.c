@@ -300,6 +300,8 @@ static void* rotation_server_thread(void* arg)
             long sleep_time = 1000000000/MIN_FREQUENCY;
             SLEEP(sleep_time)
             pthread_mutex_lock(&lock);
+
+            g_angle += g_acceleration < 0.0 ? 1 : -1;
         }
 
     }
@@ -373,20 +375,17 @@ static PyObject* rotation_client(PyObject* self, PyObject* args)
     if (labs(angle_steps) > floor(16 * INERTIA_PLATFORM2WHEEL_RATIO)) {
         g_position = target_position;
         g_angle += angle_steps;
-    } else {
-      goto rotation_end;
-    }
 
-    if (g_angle != 0) {
-        // Update acceleration to reach the target angle in the given time
-        g_acceleration = 2*(g_angle-g_frequency*REACH_TIME)/(REACH_TIME*REACH_TIME);
-        g_acceleration = fmax(fmin(g_acceleration, MAX_ACCELERATION), -MAX_ACCELERATION);
+        if (g_angle != 0) {
+            // Update acceleration to reach the target angle in the given time
+            g_acceleration = 2*(g_angle-g_frequency*REACH_TIME)/(REACH_TIME*REACH_TIME);
+            g_acceleration = fmax(fmin(g_acceleration, MAX_ACCELERATION), -MAX_ACCELERATION);
 
-        if (g_angle == angle_steps) {
-            pthread_cond_signal(&cond);
+            if (g_angle == angle_steps) {
+                pthread_cond_signal(&cond);
+            }
         }
     }
-rotation_end:    
     pthread_mutex_unlock(&lock);
     Py_END_ALLOW_THREADS
 
