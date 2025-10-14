@@ -451,6 +451,12 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                         once = false;
                     }
 
+                    // const passed = performance.now() - time;
+                    // const wait_time = 100 - passed;
+
+                    // setTimeout(() => {
+                    //     session.requestAnimationFrame(onXRFrame);
+                    // }, wait_time);
                     session.requestAnimationFrame(onXRFrame);
                 } catch (e) {
                     errors.textContent += 'XRFrame error: ' + e + '\n';
