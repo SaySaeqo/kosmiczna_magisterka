@@ -9,5 +9,6 @@ version = "1.0.0"
 [tool.setuptools]
 ext-modules = [
   { name = "kosmiczna_magisterka.fast_motor", sources = ["fast_motor.c"], libraries = ["pigpio", "rt", "pthread"], extra-compile-args=["-O"]}
+  { name = "kosmiczna_magisterka.fast_motor2", sources = ["fast_motor2.c"], libraries = ["pigpio", "rt", "pthread"], extra-compile-args=["-O"]}
 ]
 packages = []
