@@ -164,14 +164,14 @@ if __name__ == "__main__":
                     continue
                 print("Running crotacc_p...")
                 try:
-                    radians = float(cmd[1]) if len(cmd) > 1 else math.pi
+                    angle = float(cmd[1]) if len(cmd) > 1 else 800
                     duration = float(cmd[2]) if len(cmd) > 2 else 1
                     frequency = int(cmd[3]) if len(cmd) > 3 else 300
                 except ValueError:
-                    print("Usage: crotacc_p [radians] [seconds] [frequency]")
+                    print("Usage: crotacc_p [angle] [seconds] [frequency]")
                     continue
 
-                acceleration = (radians / motor.ROTATION_PER_STEP / motor.get_step_resolution()) * motor.INERTIA_PLATFORM2WHEEL_RATIO / duration / duration
+                acceleration = angle * motor.INERTIA_PLATFORM2WHEEL_RATIO / duration / duration
                 commands.append(with_arg(functools.partial(cmotor.generate_signal_prep, acceleration, frequency, duration)))
             elif cmd[0] == "crotacc":
                 if rotator is not None:
