@@ -33,7 +33,7 @@
 #define DIR_PIN 23
 #define ENABLE_PIN 4
 #define ROTATION_PER_STEP (M_PI/800)
-#define INERTIA_PLATFORM2WHEEL_RATIO 6.23
+#define INERTIA_PLATFORM2WHEEL_RATIO 5.64 //6.23
 #define CALCULATION_TIME_NS 260
 #define WRITING_TIME_NS 1100
 #define INIT_TIME_NS 6000 // 3000-80000 ns
@@ -115,7 +115,7 @@ static void generate_signal_prep(double acceleration, int freq, double duration)
     return;
 }
 
-static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x more rotation
+static void generate_signal(double acceleration, double freq, double duration)
 {
     // Make sure that this function is not called too quickly 
     while (clock_nanosleep(CLOCK_MONOTONIC, TIMER_ABSTIME, &signal_min_start, NULL) == EINTR);
@@ -123,46 +123,17 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     // Start signal ASAP
     gpioWrite(STEP_PIN, 1);
 
-    // Start "init time" measurement
-    struct timespec start, end;
-    int init_time;
-    clock_gettime(CLOCK_MONOTONIC, &start);
-
-    // Get parameters
-    double duration, acceleration;
-    double freq;
-    if (!PyArg_ParseTuple(args, "(ddd)", &acceleration, &freq, &duration))
-    {
-        return NULL;
-    }
-
-    Py_BEGIN_ALLOW_THREADS // Python functions cannot be within this block
-    
-    // Correct parameters by controlling direction
-    if (freq > 0.0) {
-        write_dir(0);
-    } else {
-        write_dir(1);
-        freq = -freq;
-        acceleration = -acceleration;
-    }
-    
     // Prepare variable for signal generation
     SLEEP_PREP
     double time_passed = 0.0;
     double impulse_duration = 1.0 / freq;
     double sleep_time;
-    const double acc_const = acceleration * INERTIA_PLATFORM2WHEEL_RATIO / ROTATION_PER_STEP;
-
-    // Get "init time"
-    clock_gettime(CLOCK_MONOTONIC, &end);
-    init_time = (end.tv_sec - start.tv_sec) * 1000000000 + (end.tv_nsec - start.tv_nsec);
 
     // Finish first impulse (started before getting parameters)
     sleep_time = (int)(impulse_duration * 500000000);
     time_passed += impulse_duration;
-    impulse_duration = 1.0 / (freq + acc_const * time_passed);
-    SLEEP(sleep_time-WRITING_TIME_NS-CALCULATION_TIME_NS-init_time)
+    impulse_duration = 1.0 / (freq + acceleration * time_passed);
+    SLEEP(sleep_time-WRITING_TIME_NS-CALCULATION_TIME_NS)
     gpioWrite(STEP_PIN, 0);
 
     // Generate the rest of the impulses
@@ -171,7 +142,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
         SLEEP(sleep_time-WRITING_TIME_NS-CALCULATION_TIME_NS)
         sleep_time = (int)(impulse_duration * 500000000);
         time_passed += impulse_duration;
-        impulse_duration = 1.0 / (freq + acc_const * time_passed);
+        impulse_duration = 1.0 / (freq + acceleration * time_passed);
         gpioWrite(STEP_PIN, 1);
         SLEEP(sleep_time-WRITING_TIME_NS)
         gpioWrite(STEP_PIN, 0);
@@ -183,9 +154,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     signal_min_start.tv_sec += nsec / 1000000000;
     signal_min_start.tv_nsec = nsec % 1000000000;
 
-    Py_END_ALLOW_THREADS
-
-    Py_RETURN_NONE;
+    return;
 }
 
 struct Quaternion {
@@ -250,6 +219,7 @@ static void* rotation_server_thread(void* arg)
     SLEEP_PREP
     g_server_is_running = true;
     const min_delay = (int)floor(0.5/MIN_FREQUENCY * 500000000) - WRITING_TIME_NS;
+    int dir = 0;
 
     while (g_server_is_running) {
 
@@ -263,21 +233,23 @@ static void* rotation_server_thread(void* arg)
                 g_angle += 1600;
             }
 
-	    printf("g_angle=%ld", g_angle);
-            double acceleration = -g_angle * INERTIA_PLATFORM2WHEEL_RATIO / HALF_REACH_TIME / HALF_REACH_TIME;
+            //printf("g_angle=%ld\n", g_angle);
+            double acceleration = -2 * g_angle * INERTIA_PLATFORM2WHEEL_RATIO / REACH_TIME / REACH_TIME;
             g_angle = 0;
 
             pthread_mutex_unlock(&lock);
 
-            int dir = acceleration < 0.0 ? 0 : 1;
+            dir = acceleration < 0.0 ? 0 : 1;
             write_dir(dir);
             acceleration = fabs(acceleration);
-            generate_signal_prep(acceleration, MIN_FREQUENCY, HALF_REACH_TIME);
+            //generate_signal_prep(acceleration, MIN_FREQUENCY, HALF_REACH_TIME);
+            generate_signal(acceleration, MIN_FREQUENCY, REACH_TIME);
 
             pthread_mutex_lock(&lock);
         } else {
             pthread_mutex_unlock(&lock);
 
+            write_dir(dir == 0 ? 1 : 0);
             gpioWrite(STEP_PIN, 1);
             SLEEP(min_delay)
             gpioWrite(STEP_PIN, 0);
@@ -421,12 +393,6 @@ static PyObject* setup_motor(PyObject* self, PyObject* noarg)
 
 
 static PyMethodDef fast_motor2_funcs[] = {
-    {	
-        "generate_signal",
-		generate_signal,
-		METH_VARARGS,
-		"Generates a wave signal for given parameters. (adhoc calc version)"
-    },
     {	
         "setup",
         setup_motor,

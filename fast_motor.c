@@ -33,7 +33,7 @@
 #define DIR_PIN 23
 #define ENABLE_PIN 4
 #define ROTATION_PER_STEP (M_PI/800)
-#define INERTIA_PLATFORM2WHEEL_RATIO 3.4
+#define INERTIA_PLATFORM2WHEEL_RATIO 6.23 
 #define CALCULATION_TIME_NS 260
 #define WRITING_TIME_NS 1100
 #define INIT_TIME_NS 6000 // 3000-80000 ns
@@ -163,7 +163,6 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     double time_passed = 0.0;
     double impulse_duration = 1.0 / freq;
     double sleep_time;
-    const double acc_const = acceleration * INERTIA_PLATFORM2WHEEL_RATIO / ROTATION_PER_STEP;
 
     // Get "init time"
     clock_gettime(CLOCK_MONOTONIC, &end);
@@ -172,7 +171,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
     // Finish first impulse (started before getting parameters)
     sleep_time = (int)(impulse_duration * 500000000);
     time_passed += impulse_duration;
-    impulse_duration = 1.0 / (freq + acc_const * time_passed);
+    impulse_duration = 1.0 / (freq + acceleration * time_passed);
     SLEEP(sleep_time-WRITING_TIME_NS-CALCULATION_TIME_NS-init_time)
     gpioWrite(STEP_PIN, 0);
 
@@ -182,7 +181,7 @@ static PyObject* generate_signal(PyObject* self, PyObject* args) // makes 2x mor
         SLEEP(sleep_time-WRITING_TIME_NS-CALCULATION_TIME_NS)
         sleep_time = (int)(impulse_duration * 500000000);
         time_passed += impulse_duration;
-        impulse_duration = 1.0 / (freq + acc_const * time_passed);
+        impulse_duration = 1.0 / (freq + acceleration * time_passed);
         gpioWrite(STEP_PIN, 1);
         SLEEP(sleep_time-WRITING_TIME_NS)
         gpioWrite(STEP_PIN, 0);
