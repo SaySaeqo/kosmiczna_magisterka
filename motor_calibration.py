@@ -8,9 +8,10 @@ import logging
 import threading
 import kosmiczna_magisterka.fast_motor as cmotor
 
-def rotate_platform(angle):
+def rotate_platform(angle, dur=0.5):
     GPIO.output(motor.MPINS, GPIO.HIGH)
-    duration = 0.5
+    GPIO.output(motor.PINS["M3"],GPIO.LOW)
+    duration = dur
     acceleration = (angle / motor.ROTATION_PER_STEP / motor.get_step_resolution()) * motor.INERTIA_PLATFORM2WHEEL_RATIO / duration / duration
     print(acceleration)
     cmotor.generate_signal_prep(acceleration,300,duration)
@@ -47,13 +48,36 @@ def calibrate_inertia_ratio():
     print(f"Final inertia ratio: {unit + tenths + hundredths}")
 
     motor.INERTIA_PLATFORM2WHEEL_RATIO = unit + tenths + hundredths
-    time.sleep(1)
+    time.sleep(3)
     rotate_platform(math.pi/4)
     time.sleep(1)
     rotate_platform(math.pi/2)
     time.sleep(1)
     rotate_platform(math.pi)
 
+
+def final_rotation_test():
+    print("Setting INERTIA")
+    time.sleep(3)
+    motor.INERTIA_PLATFORM2WHEEL_RATIO = 6.23
+    print("PI/4 rotate")
+    time.sleep(3)
+    rotate_platform(math.pi/4)
+    print("PI/2 rotate")
+    time.sleep(3)
+    rotate_platform(math.pi/2)
+    print("PI rotate")
+    time.sleep(3)
+    rotate_platform(math.pi)
+    print("PI/4 rotate")
+    time.sleep(3)
+    rotate_platform(math.pi/4, 0.25)
+    print("PI/2 rotate")
+    time.sleep(3)
+    rotate_platform(math.pi/2, 0.25)
+    print("PI rotate")
+    time.sleep(3)
+    rotate_platform(math.pi, 0.25)
 
 
 def calibrate_decay_time():
@@ -87,9 +111,11 @@ if __name__ == "__main__":
         motor.reset()
         logging.basicConfig(level=logging.DEBUG, filemode="w", filename="motor-calibration.log")
 
-        CALLIBRATION_TYPE = 1
+        CALLIBRATION_TYPE = 0
 
-        if CALLIBRATION_TYPE == 1:
+        if CALLIBRATION_TYPE == 0:
+            final_rotation_test()
+        elif CALLIBRATION_TYPE == 1:
             calibrate_inertia_ratio()
         elif CALLIBRATION_TYPE == 2:
             calibrate_decay_time()

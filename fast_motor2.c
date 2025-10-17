@@ -33,7 +33,7 @@
 #define DIR_PIN 23
 #define ENABLE_PIN 4
 #define ROTATION_PER_STEP (M_PI/800)
-#define INERTIA_PLATFORM2WHEEL_RATIO 7.1
+#define INERTIA_PLATFORM2WHEEL_RATIO 6.23
 #define CALCULATION_TIME_NS 260
 #define WRITING_TIME_NS 1100
 #define INIT_TIME_NS 6000 // 3000-80000 ns
@@ -249,6 +249,7 @@ static void* rotation_server_thread(void* arg)
     pthread_mutex_lock(&lock);
     SLEEP_PREP
     g_server_is_running = true;
+    const min_delay = (int)floor(0.5/MIN_FREQUENCY * 500000000) - WRITING_TIME_NS;
 
     while (g_server_is_running) {
 
@@ -262,18 +263,30 @@ static void* rotation_server_thread(void* arg)
                 g_angle += 1600;
             }
 
+	    printf("g_angle=%ld", g_angle);
             double acceleration = -g_angle * INERTIA_PLATFORM2WHEEL_RATIO / HALF_REACH_TIME / HALF_REACH_TIME;
             g_angle = 0;
 
             pthread_mutex_unlock(&lock);
 
-            write_dir(acceleration < 0.0 ? 0 : 1);
+            int dir = acceleration < 0.0 ? 0 : 1;
+            write_dir(dir);
             acceleration = fabs(acceleration);
             generate_signal_prep(acceleration, MIN_FREQUENCY, HALF_REACH_TIME);
 
             pthread_mutex_lock(&lock);
         } else {
-            pthread_cond_wait(&cond, &lock);
+            pthread_mutex_unlock(&lock);
+
+            gpioWrite(STEP_PIN, 1);
+            SLEEP(min_delay)
+            gpioWrite(STEP_PIN, 0);
+            SLEEP(min_delay)
+
+            pthread_mutex_lock(&lock);
+            //gpioWrite(ENABLE_PIN, 1);
+            //pthread_cond_wait(&cond, &lock);
+            //gpioWrite(ENABLE_PIN, 0);
         }
 
     }
@@ -336,9 +349,9 @@ static PyObject* rotation_client(PyObject* self, PyObject* args)
 
     pthread_mutex_lock(&lock);
 
-    if (labs(angle) > floor(16 * INERTIA_PLATFORM2WHEEL_RATIO)) {
+    if (labs(angle) > 24) {
         g_angle += angle;
-        pthread_cond_signal(&cond);
+        //pthread_cond_signal(&cond);
     }
 
     pthread_mutex_unlock(&lock);

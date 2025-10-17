@@ -13,7 +13,6 @@ google-crc32c==1.7.1
 gpio==1.0.1
 idna==3.10
 ifaddr==0.2.0
-kosmiczna_magisterka @ file:///home/pi/kosmiczna_magisterka
 multidict==6.6.3
 pigpio==1.78
 propcache==0.3.2
