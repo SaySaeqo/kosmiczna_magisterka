@@ -17,8 +17,8 @@ if __name__ == "__main__":
             elif cmd.startswith("stream"):
                 cmd = cmd.removeprefix("stream")
                 angle = int(cmd)
-                time_sec = 10
-                interval = 0.1
+                time_sec = 5
+                interval = 0.5
                 print(f"Pushing {angle} angle every {interval}s for {time_sec}s")
                 for _ in range(int(time_sec / interval)):
                     cmotor2.rotation_client(angle)
