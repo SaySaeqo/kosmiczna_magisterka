@@ -15,7 +15,8 @@ def rotate_platform(angle, dur=0.5):
     acceleration = 2*(angle / motor.ROTATION_PER_STEP / motor.get_step_resolution()) * motor.INERTIA_PLATFORM2WHEEL_RATIO / duration / duration
     print(acceleration)
     cmotor.generate_signal((acceleration,200,duration))
-    cmotor.generate_signal((0, -400, 0.1))
+    time.sleep(0.1)
+    # cmotor.generate_signal((0, -400, 0.1))
                            
 def calibrate_inertia_ratio():
     unit, tenths, hundredths = 11, 0.9, 0.09
