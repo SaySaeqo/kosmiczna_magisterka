@@ -33,7 +33,7 @@
 #define DIR_PIN 23
 #define ENABLE_PIN 4
 #define ROTATION_PER_STEP (M_PI/800)
-#define INERTIA_PLATFORM2WHEEL_RATIO 4.3 
+#define INERTIA_PLATFORM2WHEEL_RATIO 5.65 
 //#define INERTIA_PLATFORM2WHEEL_RATIO 6.23
 #define CALCULATION_TIME_NS 260
 #define WRITING_TIME_NS 1100
@@ -213,7 +213,7 @@ static long g_angle = 0;
 #define MAX_FREQUENCY 7500
 #define MAX_ACCELERATION 24000
 #define MIN_FREQUENCY 200
-#define WAIT_TIME 0.1 * 1000000000
+#define WAIT_TIME 0.05 * 1000000000
 
 static void* rotation_server_thread(void* arg)
 {
@@ -222,6 +222,7 @@ static void* rotation_server_thread(void* arg)
     g_server_is_running = true;
     const min_delay = (int)floor(0.5/MIN_FREQUENCY * 500000000) - WRITING_TIME_NS;
     int dir = 0;
+    int first = 0;
 
     while (g_server_is_running) {
 
@@ -236,6 +237,7 @@ static void* rotation_server_thread(void* arg)
             }
 
             //printf("g_angle=%ld\n", g_angle);
+            //double acceleration = -g_angle * INERTIA_PLATFORM2WHEEL_RATIO / HALF_REACH_TIME / HALF_REACH_TIME;
             double acceleration = -2 * g_angle * INERTIA_PLATFORM2WHEEL_RATIO / REACH_TIME / REACH_TIME;
             g_angle = 0;
 
@@ -245,23 +247,33 @@ static void* rotation_server_thread(void* arg)
             write_dir(dir);
             acceleration = fabs(acceleration);
             //generate_signal_prep(acceleration, MIN_FREQUENCY, HALF_REACH_TIME);
+            SLEEP(WAIT_TIME)
             generate_signal(acceleration, MIN_FREQUENCY, REACH_TIME);
-            //SLEEP(WAIT_TIME)
+            SLEEP(WAIT_TIME)
+            first = 0;
 
             pthread_mutex_lock(&lock);
         } else {
-            //pthread_mutex_unlock(&lock);
+            //printf("STOP\n");
+            pthread_mutex_unlock(&lock);
+            
+            if (first == 0) {
+              generate_signal(MIN_FREQUENCY/0.05, MIN_FREQUENCY, 0.05);
+              first = 1;
+            }
 
             //write_dir(dir == 0 ? 1 : 0);
-            //gpioWrite(STEP_PIN, 1);
-            //SLEEP(min_delay)
-            //gpioWrite(STEP_PIN, 0);
-            //SLEEP(min_delay)
+            gpioWrite(STEP_PIN, 1);
+            SLEEP(min_delay)
+            gpioWrite(STEP_PIN, 0);
+            SLEEP(min_delay)
+            //double acceleration = -2 * 24 * INERTIA_PLATFORM2WHEEL_RATIO / 0.05 / 0.05;
+            //generate_signal(acceleration, MIN_FREQUENCY, 0.05);
 
-            //pthread_mutex_lock(&lock);
-            gpioWrite(ENABLE_PIN, 1);
-            pthread_cond_wait(&cond, &lock);
-            gpioWrite(ENABLE_PIN, 0);
+            pthread_mutex_lock(&lock);
+            //gpioWrite(ENABLE_PIN, 1);
+            //pthread_cond_wait(&cond, &lock);
+            //gpioWrite(ENABLE_PIN, 0);
         }
 
     }
