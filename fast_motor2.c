@@ -261,10 +261,14 @@ static void* rotation_server_thread(void* arg)
             pthread_mutex_unlock(&lock);
             
             if (first == 0) {
-             long idle_frequency = acceleration * REACH_TIME + MIN_FREQUENCY;
-             idle_frequency /= 4;
-             idle_delay = labs((long)floor(500000000/idle_frequency) - WRITING_TIME_NS);
-             first = 1;
+                long idle_frequency = acceleration * REACH_TIME + MIN_FREQUENCY;
+                
+                double deceleration = (-3 * idle_frequency) / (4 * WAIT_TIME);
+                generate_signal(deceleration, idle_frequency, REACH_TIME);
+
+                idle_frequency /= 4;
+                idle_delay = labs((long)floor(500000000/idle_frequency) - WRITING_TIME_NS);
+                first = 1;
             }
 
             //write_dir(dir == 0 ? 1 : 0);
