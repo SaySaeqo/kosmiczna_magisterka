@@ -222,7 +222,7 @@ static void* rotation_server_thread(void* arg)
     SLEEP_PREP
     g_server_is_running = true;
     int dir = 0;
-    int first = 0;
+    int first = 1;
     long last_angle = 0;
     long idle_delay = (int)floor(0.5/MIN_FREQUENCY * 500000000) - WRITING_TIME_NS;
     double acceleration = 0.0;
@@ -261,10 +261,10 @@ static void* rotation_server_thread(void* arg)
             pthread_mutex_unlock(&lock);
             
             if (first == 0) {
-                long idle_frequency = acceleration * REACH_TIME + MIN_FREQUENCY;
+                double idle_frequency = acceleration * REACH_TIME + MIN_FREQUENCY;
                 
-                double deceleration = (-3 * idle_frequency) / (4 * WAIT_TIME);
-                generate_signal(deceleration, idle_frequency, REACH_TIME);
+                double deceleration = -0.75 * idle_frequency / WAIT_TIME;
+                generate_signal(deceleration, idle_frequency, WAIT_TIME);
 
                 idle_frequency /= 4;
                 idle_delay = labs((long)floor(500000000/idle_frequency) - WRITING_TIME_NS);
