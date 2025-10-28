@@ -208,12 +208,12 @@ static double g_frequency = 0.0;
 static double g_acceleration = 0.0;
 static long g_angle = 0;
 #define INTERVAL 0.05
-#define REACH_TIME 0.45
+#define WAIT_TIME 0.05
+#define REACH_TIME (0.5 - WAIT_TIME)
 #define HALF_REACH_TIME (REACH_TIME/2)
 #define MAX_FREQUENCY 7500
 #define MAX_ACCELERATION 24000
 #define MIN_FREQUENCY 200
-#define WAIT_TIME 0.05
 #define NANO 1000000000
 
 static void* rotation_server_thread(void* arg)
