@@ -260,26 +260,27 @@ static void* rotation_server_thread(void* arg)
             //printf("STOP\n");
             pthread_mutex_unlock(&lock);
             
-            //if (first == 0) {
-            //  long idle_frequency = acceleration * REACH_TIME + MIN_FREQUENCY;
-            //  idle_delay = labs((long)floor(500000000/idle_frequency) - WRITING_TIME_NS);
-            //  first = 1;
-            //}
+            if (first == 0) {
+             long idle_frequency = acceleration * REACH_TIME + MIN_FREQUENCY;
+             idle_frequency /= 4;
+             idle_delay = labs((long)floor(500000000/idle_frequency) - WRITING_TIME_NS);
+             first = 1;
+            }
 
             //write_dir(dir == 0 ? 1 : 0);
-            //gpioWrite(STEP_PIN, 1);
-            //SLEEP(idle_delay)
-            //gpioWrite(STEP_PIN, 0);
-            //SLEEP(idle_delay)
+            gpioWrite(STEP_PIN, 1);
+            SLEEP(idle_delay)
+            gpioWrite(STEP_PIN, 0);
+            SLEEP(idle_delay)
             //double acceleration = -2 * 24 * INERTIA_PLATFORM2WHEEL_RATIO / 0.05 / 0.05;
             //generate_signal(acceleration, MIN_FREQUENCY, 0.05);
 
-            SLEEP(WAIT_TIME * NANO)
+            // SLEEP(WAIT_TIME * NANO)
             pthread_mutex_lock(&lock);
 
-            gpioWrite(ENABLE_PIN, 1);
-            pthread_cond_wait(&cond, &lock);
-            gpioWrite(ENABLE_PIN, 0);
+            // gpioWrite(ENABLE_PIN, 1);
+            // pthread_cond_wait(&cond, &lock);
+            // gpioWrite(ENABLE_PIN, 0);
         }
 
     }
