@@ -220,7 +220,7 @@ static long g_angle = 0;
 #define MAX_ACCELERATION 24000
 #define MIN_FREQUENCY 200
 #define NANO 1000000000
-#define BACKWARD_FACTOR 0.00004
+#define BACKWARD_FACTOR 0.0000015
 
 static void* rotation_server_thread(void* arg)
 {
@@ -252,7 +252,8 @@ static void* rotation_server_thread(void* arg)
             //acceleration = -g_angle * INERTIA_PLATFORM2WHEEL_RATIO / HALF_REACH_TIME / HALF_REACH_TIME;
             acceleration = -2 * g_angle * INERTIA_PLATFORM2WHEEL_RATIO / REACH_TIME / REACH_TIME;
             last_angle = g_angle;
-            total_angle += g_angle;
+            //total_angle += g_angle;
+            total_angle -= (long)floor(g_angle * INERTIA_PLATFORM2WHEEL_RATIO);
             g_angle = 0;
 
             pthread_mutex_unlock(&lock);
@@ -288,18 +289,27 @@ static void* rotation_server_thread(void* arg)
                 if (fabs(end_frequency) < MIN_FREQUENCY) {
                     end_frequency = copysign(MIN_FREQUENCY, end_frequency);
                 }
-                double rotation_backwards = copysign(1.0, total_angle) * total_angle * total_angle * BACKWARD_FACTOR;
+                double rotation_backwards = copysign(1.0, -last_angle) * total_angle * total_angle * BACKWARD_FACTOR;
                 double  waiting_time = WAIT_TIME;
                 
                 //double deceleration = (MIN_FREQUENCY - end_frequency) / WAIT_TIME;
                 double deceleration = 2*(rotation_backwards - end_frequency * waiting_time)/(waiting_time*waiting_time);
                 double max_acc = end_frequency * end_frequency;
                 double decelerated_frequency = 1.0;
-                if (fabs(deceleration) < max_acc) {
+                if (fabs(deceleration) < max_acc && deceleration*end_frequency < 0) {
+                    decelerated_frequency = end_frequency + deceleration * waiting_time;
+                    if (fabs(decelerated_frequency) < MIN_FREQUENCY || decelerated_frequency*end_frequency < 0) {
+                        deceleration = (copysign(MIN_FREQUENCY,end_frequency) - end_frequency) / waiting_time;
+                        decelerated_frequency = 0.0;
+                    }
                     generate_signal(deceleration, end_frequency, waiting_time);
-                } else if (deceleration > MAX_ACCELERATION) {
-                    deceleration = MAX_ACCELERATION;
-                    waiting_time = (-end_frequency + sqrt(end_frequency*end_frequency + 2*rotation_backwards*MAX_ACCELERATION))/MAX_ACCELERATION;
+                } else if (fabs(deceleration) > MAX_ACCELERATION) {
+                    deceleration = copysign(MAX_ACCELERATION,deceleration);
+                    double delta = sqrt(end_frequency*end_frequency + 2*rotation_backwards*deceleration);
+                    waiting_time = (-end_frequency + delta)/deceleration;
+                    if (waiting_time < 0) waiting_time = (-end_frequency - delta)/deceleration;
+                    generate_signal(deceleration, end_frequency, waiting_time);
+                } else if (deceleration*end_frequency > 0) {
                     generate_signal(deceleration, end_frequency, waiting_time);
                 } else {
                     // instant stop
@@ -317,7 +327,7 @@ static void* rotation_server_thread(void* arg)
                   total_angle = 0;
                 //   start_frequency = MIN_FREQUENCY; // moved above
                 }
-                printf("deceleration=%f\nwaiting_time=%f\nend_frequency=%f\ndecelerated_frequency=%f\nidle_delay=%ld\n", deceleration, waiting_time, end_frequency, decelerated_frequency, idle_delay);
+                printf("\ntotal_angle=%ld\nrotation_backwards=%f\ndeceleration=%f\nwaiting_time=%f\nend_frequency=%f\ndecelerated_frequency=%f\nidle_delay=%ld\n", total_angle, rotation_backwards, deceleration, waiting_time, end_frequency, decelerated_frequency, idle_delay);
                 first = 1;
             }
 
