@@ -226,6 +226,7 @@ static void* rotation_server_thread(void* arg)
     long last_angle = 0;
     long idle_delay = (int)floor(0.5/MIN_FREQUENCY * 500000000) - WRITING_TIME_NS;
     double acceleration = 0.0;
+    long total_angle = 0;
 
     while (g_server_is_running) {
 
@@ -243,6 +244,7 @@ static void* rotation_server_thread(void* arg)
             //acceleration = -g_angle * INERTIA_PLATFORM2WHEEL_RATIO / HALF_REACH_TIME / HALF_REACH_TIME;
             acceleration = -2 * g_angle * INERTIA_PLATFORM2WHEEL_RATIO / REACH_TIME / REACH_TIME;
             last_angle = g_angle;
+            total_angle += g_angle;
             g_angle = 0;
 
             pthread_mutex_unlock(&lock);
@@ -261,30 +263,36 @@ static void* rotation_server_thread(void* arg)
             pthread_mutex_unlock(&lock);
             
             if (first == 0) {
-                double idle_frequency = acceleration * REACH_TIME + MIN_FREQUENCY;
+                double end_frequency = acceleration * REACH_TIME + MIN_FREQUENCY;
+                const double BACKWARD_FACTOR = 0.0001;
+                double rotation_backwards = total_angle * total_angle * BACKWARD_FACTOR;
+                long waiting_time = WAIT_TIME;
                 
-                double deceleration = -0.75 * idle_frequency / WAIT_TIME;
-                generate_signal(deceleration, idle_frequency, WAIT_TIME);
+                double deceleration = (MIN_FREQUENCY - end_frequency) / WAIT_TIME;
+                if (deceleration > MAX_ACCELERATION) {
+                    deceleration = MAX_ACCELERATION;
+                    waiting_time = (MIN_FREQUENCY - end_frequency) / MAX_ACCELERATION;
+                }
+                generate_signal(deceleration, end_frequency, waiting_time);
 
-                idle_frequency /= 4;
-                idle_delay = labs((long)floor(500000000/idle_frequency) - WRITING_TIME_NS);
+                idle_delay = labs((long)floor(500000000/decelerated_frequency) - WRITING_TIME_NS);
                 first = 1;
             }
 
             //write_dir(dir == 0 ? 1 : 0);
-            gpioWrite(STEP_PIN, 1);
-            SLEEP(idle_delay)
-            gpioWrite(STEP_PIN, 0);
-            SLEEP(idle_delay)
+            // gpioWrite(STEP_PIN, 1);
+            // SLEEP(idle_delay)
+            // gpioWrite(STEP_PIN, 0);
+            // SLEEP(idle_delay)
             //double acceleration = -2 * 24 * INERTIA_PLATFORM2WHEEL_RATIO / 0.05 / 0.05;
             //generate_signal(acceleration, MIN_FREQUENCY, 0.05);
 
             // SLEEP(WAIT_TIME * NANO)
             pthread_mutex_lock(&lock);
 
-            // gpioWrite(ENABLE_PIN, 1);
-            // pthread_cond_wait(&cond, &lock);
-            // gpioWrite(ENABLE_PIN, 0);
+            gpioWrite(ENABLE_PIN, 1);
+            pthread_cond_wait(&cond, &lock);
+            gpioWrite(ENABLE_PIN, 0);
         }
 
     }
