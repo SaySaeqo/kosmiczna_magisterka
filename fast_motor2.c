@@ -492,6 +492,43 @@ static PyObject* rotation_server_simple(PyObject* self, PyObject* noarg)
     Py_RETURN_NONE;
 }
 
+static PyObject* rotation_client_position(PyObject* self, PyObject* args)
+{
+    double x, y, z, w;
+    if (!PyArg_ParseTuple(args, "dddd", &x, &y, &z, &w))
+    {
+        return NULL;
+    }
+
+    struct Quaternion target_position = {x, y, z, w};
+    if (g_position.x == NO_VALUE) {
+        g_position = target_position;
+        Py_RETURN_NONE;
+    }
+
+    
+    if (g_server_is_running == false) {
+        PyErr_SetString(PyExc_Exception, "Rotation server is not running");
+        return NULL;
+    }
+    
+    Py_BEGIN_ALLOW_THREADS
+    
+    pthread_mutex_lock(&lock);
+    
+    double angle = get_angle(g_position, target_position);
+    long angle_steps = (long)floor(angle / ROTATION_PER_STEP);
+    if (labs(angle) > 24) {
+        g_position = target_position;
+        g_angle += angle_steps;
+        pthread_cond_signal(&cond);
+    }
+
+    pthread_mutex_unlock(&lock);
+    Py_END_ALLOW_THREADS
+
+    Py_RETURN_NONE;
+}
 
 static PyObject* rotation_client(PyObject* self, PyObject* args)
 {
@@ -611,6 +648,12 @@ static PyMethodDef fast_motor2_funcs[] = {
         rotation_client,
         METH_VARARGS,
         "Sends target rotation to the server."
+    },
+    {    
+        "rotation_client_position",
+        rotation_client_position,
+        METH_VARARGS,
+        "Sends target rotation (as quaternion) to the server."
     },
     {    
         "stop_rotation",

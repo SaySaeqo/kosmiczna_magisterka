@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request
 import uvicorn
-import kosmiczna_magisterka.fast_motor as cmotor
+import kosmiczna_magisterka.fast_motor2 as cmotor2
 import logging
 
 app = FastAPI()
@@ -19,14 +19,14 @@ async def rotate(request: Request):
         return
     last_number = number
 
-    cmotor.rotation_client(x, y, z, w)
+    cmotor2.rotation_client_position(x, y, z, w)
 
 @app.post('/print_globals')
 async def print_globals():
-    cmotor.print_globals()
+    cmotor2.print_globals()
 
 if __name__ == "__main__":
     logging.basicConfig(level=logging.WARNING)
-    cmotor.setup()
-    cmotor.rotation_server()
+    cmotor2.setup()
+    cmotor2.rotation_server_simple()
     uvicorn.run(app, host="127.0.0.1", port=9090, log_level="warning")
