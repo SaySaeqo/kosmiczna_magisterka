@@ -12,10 +12,12 @@ def rotate_platform(angle, dur=0.5):
     GPIO.output(motor.MPINS, GPIO.HIGH)
     GPIO.output(motor.PINS["M3"],GPIO.LOW)
     duration = dur
-    acceleration = 2*(angle / motor.ROTATION_PER_STEP / motor.get_step_resolution()) * motor.INERTIA_PLATFORM2WHEEL_RATIO / duration / duration
+    acceleration = (angle / motor.ROTATION_PER_STEP / motor.get_step_resolution()) * motor.INERTIA_PLATFORM2WHEEL_RATIO / duration / duration
+    #acceleration = 2*(angle / motor.ROTATION_PER_STEP / motor.get_step_resolution()) * motor.INERTIA_PLATFORM2WHEEL_RATIO / duration / duration
     print(acceleration)
-    cmotor.generate_signal((acceleration,200,duration))
-    time.sleep(0.1)
+    cmotor.generate_signal_prep(acceleration,200,duration)
+    #cmotor.generate_signal((acceleration,200,duration))
+    #time.sleep(0.1)
     # cmotor.generate_signal((0, -400, 0.1))
                            
 def calibrate_inertia_ratio():
@@ -61,7 +63,7 @@ def calibrate_inertia_ratio():
 def final_rotation_test():
     print("Setting INERTIA")
     time.sleep(3)
-    motor.INERTIA_PLATFORM2WHEEL_RATIO = 5.65
+    motor.INERTIA_PLATFORM2WHEEL_RATIO = 6.9
     print("PI/4 rotate")
     time.sleep(3)
     rotate_platform(math.pi/4)

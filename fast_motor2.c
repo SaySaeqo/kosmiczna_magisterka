@@ -33,8 +33,8 @@
 #define DIR_PIN 23
 #define ENABLE_PIN 4
 #define ROTATION_PER_STEP (M_PI/800)
-#define INERTIA_PLATFORM2WHEEL_RATIO 5.65 
-//#define INERTIA_PLATFORM2WHEEL_RATIO 6.23
+//#define INERTIA_PLATFORM2WHEEL_RATIO 5.65 
+#define INERTIA_PLATFORM2WHEEL_RATIO 6.9
 #define CALCULATION_TIME_NS 260
 #define WRITING_TIME_NS 1100
 #define INIT_TIME_NS 6000 // 3000-80000 ns
@@ -66,6 +66,12 @@ static void write_dir(int value)
 
 static void generate_signal_prep(double acceleration, int freq, double duration)
 {
+    write_dir(freq < 0 ? 0 : 1);
+    if (freq < 0) {
+        freq = -freq;
+        acceleration = -acceleration;
+    }
+
     SLEEP_PREP
     float time_passed = 0.0;
     float impulse_duration = fabs(1.0 / freq);
@@ -222,7 +228,7 @@ static long g_angle = 0;
 #define MAX_ACCELERATION 24000
 #define MIN_FREQUENCY 200
 #define NANO 1000000000
-#define BACKWARD_FACTOR 0.0000015
+#define BACKWARD_FACTOR 0.000002
 
 static void* rotation_server_thread_simple(void* arg)
 {
@@ -261,9 +267,13 @@ static void* rotation_server_thread_simple(void* arg)
                 total_angle += 1600;
             }
 
-            acceleration = -2 * total_angle * INERTIA_PLATFORM2WHEEL_RATIO / REACH_TIME / REACH_TIME;
-            generate_signal(acceleration, start_frequency, REACH_TIME);
-
+            acceleration = -total_angle * INERTIA_PLATFORM2WHEEL_RATIO / HALF_REACH_TIME / HALF_REACH_TIME;
+            //acceleration = -2 * total_angle * INERTIA_PLATFORM2WHEEL_RATIO / REACH_TIME / REACH_TIME;
+            start_frequency = copysignf(MIN_FREQUENCY, acceleration);
+            generate_signal_prep(acceleration, start_frequency, HALF_REACH_TIME);
+            //generate_signal(acceleration, start_frequency, REACH_TIME);
+            
+            total_angle = 0;
             pthread_mutex_lock(&lock);
 
             gpioWrite(ENABLE_PIN, 1);
@@ -313,7 +323,7 @@ static void* rotation_server_thread(void* arg)
 
             pthread_mutex_unlock(&lock);
 
-            SLEEP(WAIT_TIME * NANO)
+            //SLEEP(WAIT_TIME * NANO)
 
             if (idle_delay == 0){
               start_frequency = copysignf(MIN_FREQUENCY, acceleration);
