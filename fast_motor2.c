@@ -124,6 +124,7 @@ static void generate_signal(double acceleration, double freq, double duration)
     // Start signal ASAP
     gpioWrite(STEP_PIN, 1);
 
+    write_dir(freq < 0 ? 0 : 1);
     if (freq < 0) {
         freq = -freq;
         acceleration = -acceleration;
@@ -214,6 +215,7 @@ static double g_acceleration = 0.0;
 static long g_angle = 0;
 #define INTERVAL 0.05
 #define WAIT_TIME 0.1
+#define BREAK_TIME 0.5
 #define REACH_TIME (0.5 - WAIT_TIME)
 #define HALF_REACH_TIME (REACH_TIME/2)
 #define MAX_FREQUENCY 7500
@@ -221,6 +223,59 @@ static long g_angle = 0;
 #define MIN_FREQUENCY 200
 #define NANO 1000000000
 #define BACKWARD_FACTOR 0.0000015
+
+static void* rotation_server_thread_simple(void* arg)
+{
+    pthread_mutex_lock(&lock);
+    SLEEP_PREP
+    g_server_is_running = true;
+    int dir = 0;
+    int first = 1;
+    long last_angle = 0;
+    //long idle_delay = (int)floor(0.5/MIN_FREQUENCY * 500000000) - WRITING_TIME_NS;
+    long idle_delay = 0;
+    double acceleration = 0.0;
+    long total_angle = 0;
+    double start_frequency = MIN_FREQUENCY;
+
+    while (g_server_is_running) {
+
+        if (g_angle != 0) {
+
+            total_angle += g_angle;
+            g_angle = 0;
+
+            pthread_mutex_unlock(&lock);
+
+            SLEEP(BREAK_TIME * NANO)
+
+            pthread_mutex_lock(&lock);
+        } else {
+            pthread_mutex_unlock(&lock);
+
+            // Normalize to half rotation [-800, 800]
+            total_angle %= 1600;
+            if (total_angle > 800) {
+                total_angle -= 1600;
+            } else if (total_angle < -800) {
+                total_angle += 1600;
+            }
+
+            acceleration = -2 * total_angle * INERTIA_PLATFORM2WHEEL_RATIO / REACH_TIME / REACH_TIME;
+            generate_signal(acceleration, start_frequency, REACH_TIME);
+
+            pthread_mutex_lock(&lock);
+
+            gpioWrite(ENABLE_PIN, 1);
+            pthread_cond_wait(&cond, &lock);
+            gpioWrite(ENABLE_PIN, 0);
+        }
+
+    }
+
+    pthread_mutex_unlock(&lock);
+    return NULL;
+}
 
 static void* rotation_server_thread(void* arg)
 {
@@ -268,13 +323,11 @@ static void* rotation_server_thread(void* arg)
               //generate_signal_prep(acceleration, MIN_FREQUENCY, HALF_REACH_TIME);
               generate_signal(acceleration, start_frequency, REACH_TIME);
             } else if (idle_delay == 0) {
-              dir = acceleration < 0.0 ? 0 : 1;
-              write_dir(dir);
               //generate_signal_prep(acceleration, MIN_FREQUENCY, HALF_REACH_TIME);
               generate_signal(acceleration, start_frequency, REACH_TIME);
             } else { // change of frequency sign during acceleration phase
               // just decelerate to 0
-                double time_to_stop = fabs((copysign(MIN_FREQUENCY, start_frequency) - start_frequency) / acceleration);
+                double time_to_stop = fabs((copysignf(MIN_FREQUENCY, start_frequency) - start_frequency) / acceleration);
                 generate_signal(acceleration, start_frequency, time_to_stop);
             }
             first = 0;
@@ -287,7 +340,7 @@ static void* rotation_server_thread(void* arg)
             if (first == 0) {
                 double end_frequency = acceleration * REACH_TIME + start_frequency;
                 if (fabs(end_frequency) < MIN_FREQUENCY) {
-                    end_frequency = copysign(MIN_FREQUENCY, end_frequency);
+                    end_frequency = copysignf(MIN_FREQUENCY, end_frequency);
                 }
                 double rotation_backwards = copysign(1.0, -last_angle) * total_angle * total_angle * BACKWARD_FACTOR;
                 double  waiting_time = WAIT_TIME;
@@ -299,12 +352,12 @@ static void* rotation_server_thread(void* arg)
                 if (fabs(deceleration) < max_acc && deceleration*end_frequency < 0) {
                     decelerated_frequency = end_frequency + deceleration * waiting_time;
                     if (fabs(decelerated_frequency) < MIN_FREQUENCY || decelerated_frequency*end_frequency < 0) {
-                        deceleration = (copysign(MIN_FREQUENCY,end_frequency) - end_frequency) / waiting_time;
+                        deceleration = (copysignf(MIN_FREQUENCY,end_frequency) - end_frequency) / waiting_time;
                         decelerated_frequency = 0.0;
                     }
                     generate_signal(deceleration, end_frequency, waiting_time);
                 } else if (fabs(deceleration) > MAX_ACCELERATION) {
-                    deceleration = copysign(MAX_ACCELERATION,deceleration);
+                    deceleration = copysignf(MAX_ACCELERATION,deceleration);
                     double delta = sqrt(end_frequency*end_frequency + 2*rotation_backwards*deceleration);
                     waiting_time = (-end_frequency + delta)/deceleration;
                     if (waiting_time < 0) waiting_time = (-end_frequency - delta)/deceleration;
@@ -370,6 +423,42 @@ static PyObject* rotation_server(PyObject* self, PyObject* noarg)
     if (!server_was_running) {
         pthread_t thread_id;
         thread_created = pthread_create(&thread_id, NULL, rotation_server_thread, NULL);
+        if (thread_created != 0) {
+            thread_detached = pthread_detach(thread_id);
+        }
+    }
+    pthread_mutex_unlock(&lock);
+    Py_END_ALLOW_THREADS
+
+    if (server_was_running) {
+        PyErr_SetString(PyExc_Exception, "Rotation server is already running");
+        return NULL;
+    }
+    if (thread_created != 0) {
+        PyErr_SetString(PyExc_Exception, "Failed to create rotation server thread");
+        return NULL;
+    }
+    if (thread_detached != 0) {
+        PyErr_SetString(PyExc_Exception, "Failed to detach rotation server thread");
+        return NULL;
+    }
+
+    Py_RETURN_NONE;
+}
+
+static PyObject* rotation_server_simple(PyObject* self, PyObject* noarg)
+{
+    bool server_was_running;
+    int thread_created = 0;
+    int thread_detached = 0;
+
+    Py_BEGIN_ALLOW_THREADS
+    pthread_mutex_lock(&lock);
+    server_was_running = g_server_is_running;
+
+    if (!server_was_running) {
+        pthread_t thread_id;
+        thread_created = pthread_create(&thread_id, NULL, rotation_server_thread_simple, NULL);
         if (thread_created != 0) {
             thread_detached = pthread_detach(thread_id);
         }
@@ -500,6 +589,12 @@ static PyMethodDef fast_motor2_funcs[] = {
         rotation_server,
         METH_NOARGS,
         "Starts the rotation server in a separate thread."
+    },
+    {
+        "rotation_server_simple",
+        rotation_server_simple,
+        METH_NOARGS,
+        "Starts the simple rotation server in a separate thread."
     },
     {    
         "rotation_client",

@@ -6,6 +6,7 @@ import time
 if __name__ == "__main__":
     cmotor2.setup()
     cmotor2.rotation_server()
+    #cmotor2.rotation_server_simple()
 
     print("Motor server is running. Enter angle to rotate. Type 'q' to quit.")
     cmd = ""
