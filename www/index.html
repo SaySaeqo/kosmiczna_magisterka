@@ -276,15 +276,16 @@ CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
                     let glayer = xrGLFactory.getSubImage(eqrtLayer, frame);
 
                     // Flip imageElement horizontally using canvas (CPU)
-                    imageRotated.width = imageElement.width;
-                    imageRotated.height = imageElement.height;
-                    let ctx = imageRotated.getContext('2d');
-                    ctx.save();
-                    ctx.scale(-1, 1); // Flip X
-                    ctx.drawImage(imageElement, -imageElement.width, 0, imageElement.width, imageElement.height);
-                    ctx.restore();
+                    // imageRotated.width = imageElement.width;
+                    // imageRotated.height = imageElement.height;
+                    // let ctx = imageRotated.getContext('2d');
+                    // ctx.save();
+                    // ctx.scale(-1, 1); // Flip X
+                    // ctx.drawImage(imageElement, -imageElement.width, 0, imageElement.width, imageElement.height);
+                    // ctx.restore();
 
                     // Upload flipped image to XR layer texture
+                    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL, true);
                     gl.bindTexture(gl.TEXTURE_2D, glayer.colorTexture);
                     gl.texSubImage2D(gl.TEXTURE_2D, 0, 0, 0, gl.RGBA, gl.UNSIGNED_BYTE, imageRotated);
                     gl.bindTexture(gl.TEXTURE_2D, null);
